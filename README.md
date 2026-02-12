@@ -52,10 +52,9 @@ Personal environment configurations (Linux & Windows) managed by [chezmoi](https
 ### Testar alterações na própria máquina (com ficheiros encriptados)
 
 1. **Garantir que o age desencripta:** chave privada em `~/.config/chezmoi/age.txt` e em `~/.config/chezmoi/chezmoi.toml` a secção `[age]` com `identity` apontar para esse ficheiro (o template já faz isso).
-2. **Source = este repo:** se editaste no clone local, inicializa com esse path para o apply usar este dir:
-   ```bash
-   chezmoi init /home/rcamara/Repos/dotfiles
-   ```
+2. **Source = este repo:** por defeito o chezmoi usa `~/.local/share/chezmoi`. Para o apply usar o teu clone (edições no repo a terem efeito):
+   - **Opção A — sourceDir:** em `~/.config/chezmoi/chezmoi.toml` adiciona (ajusta o path): `sourceDir = "/home/rcamara/Repos/dotfiles"`. Depois `chezmoi source-path` deve mostrar esse dir.
+   - **Opção B — sincronizar:** antes do apply, copiar o repo para o source: `cd ~/Repos/dotfiles && tar cf - --exclude='.git' . | (cd ~/.local/share/chezmoi && tar xf -)` e depois `chezmoi apply -v`.
 3. **Aplicar (desencripta .age em memória):**
    ```bash
    chezmoi apply -v
