@@ -1,4 +1,7 @@
-# Source config (read when repo is the chezmoi source). Recipient for age encryption (chezmoi add --encrypt).
+# Source config (read when repo is the chezmoi source). Needed so encryption works when sourceDir = repo.
+encryption = "age"
+[age]
+identity = "~/.config/chezmoi/age.txt"
 recipient = "age1qgz7c54kkchzvfg3lgk2s7awe0t0w0sqdtvkfqxttf3tq92djs6qp3v5p4"
 
 # Map /etc files to system paths (apply with: sudo chezmoi apply -v)

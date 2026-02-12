@@ -53,8 +53,14 @@ Personal environment configurations (Linux & Windows) managed by [chezmoi](https
 
 1. **Garantir que o age desencripta:** chave privada em `~/.config/chezmoi/age.txt` e em `~/.config/chezmoi/chezmoi.toml` a secção `[age]` com `identity` apontar para esse ficheiro (o template já faz isso).
 2. **Source = este repo:** por defeito o chezmoi usa `~/.local/share/chezmoi`. Para o apply usar o teu clone (edições no repo a terem efeito):
-   - **Opção A — sourceDir:** em `~/.config/chezmoi/chezmoi.toml` adiciona (ajusta o path): `sourceDir = "/home/rcamara/Repos/dotfiles"`. Depois `chezmoi source-path` deve mostrar esse dir.
-   - **Opção B — sincronizar:** antes do apply, copiar o repo para o source: `cd ~/Repos/dotfiles && tar cf - --exclude='.git' . | (cd ~/.local/share/chezmoi && tar xf -)` e depois `chezmoi apply -v`.
+   - **Opção A — path fixo (no repo, só na tua máquina):** no clone, cria `.chezmoidata.toml` (está em `.gitignore`, não vai para o git) com o path do repo; o template usa esse valor e escreve-o no config, assim `chezmoi source-path` fica certo:
+     ```bash
+     cp .chezmoidata.toml.example .chezmoidata.toml
+     # Edita .chezmoidata.toml e põe o teu path em sourceDirOverride
+     ```
+     Depois faz **um** apply (pode ser com source = symlink ou sync uma vez) para o config ser escrito com o path; nos applies seguintes o source já será o repo.
+   - **Opção B — symlink:** `mv ~/.local/share/chezmoi ~/.local/share/chezmoi.bak && ln -s /home/rcamara/Repos/dotfiles ~/.local/share/chezmoi` (não precisas de sourceDir no config).
+   - **Alternativa — sincronizar:** antes do apply, copiar o repo para o source e depois `chezmoi apply -v`.
 3. **Aplicar (desencripta .age em memória):**
    ```bash
    chezmoi apply -v

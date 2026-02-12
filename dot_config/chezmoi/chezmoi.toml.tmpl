@@ -1,10 +1,13 @@
 # Source: dot_config/chezmoi/chezmoi.toml.tmpl
 # Target: ~/.config/chezmoi/chezmoi.toml
 
+# sourceDir: fixo em .chezmoidata.toml (local, gitignored) ou dinâmico (source actual)
+sourceDir = "{{ if .sourceDirOverride }}{{ .sourceDirOverride }}{{ else }}{{ .chezmoi.sourceDir }}{{ end }}"
+
 # --- Encryption (age) ---
 encryption = "age"
 [age]
-identity = "{{ .chezmoi.configDir }}/age.txt"
+identity = "{{ .chezmoi.homeDir }}/.config/chezmoi/age.txt"
 # recipient: required for `chezmoi add --encrypt`; get with: age-keygen -y < ~/.config/chezmoi/age.txt
 # recipient = "age1xxxxxxxx..."
 

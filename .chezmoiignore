@@ -1,6 +1,12 @@
 # Standard ignored files/folders
 README.md
 
+# Never create these in ~ (repo structure only)
+docs/
+packages/
+scripts/
+home/
+
 # Ignore apps/ on Linux (only Windows uses PowerShell/Terminal mappings)
 {{ if ne .chezmoi.os "windows" }}
 apps/
