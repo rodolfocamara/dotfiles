@@ -1,0 +1,11 @@
+// Allow user openvpn to configure systemd-resolved per-link DNS (no interactive auth).
+// Required for OpenVPN up/down scripts that call resolvectl dns/domain/default-route/revert.
+polkit.addRule(function(action, subject) {
+  if (subject.user === "openvpn" &&
+      (action.id === "org.freedesktop.resolve1.set-dns-servers" ||
+       action.id === "org.freedesktop.resolve1.set-domains" ||
+       action.id === "org.freedesktop.resolve1.set-default-route" ||
+       action.id === "org.freedesktop.resolve1.revert")) {
+    return polkit.Result.YES;
+  }
+});

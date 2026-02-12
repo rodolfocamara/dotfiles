@@ -102,9 +102,28 @@ CHEZMOI_OS=linux chezmoi apply -v
    sudo timedatectl set-ntp true
    ```
 
+7. **OpenVPN + systemd-resolved (split DNS):** When using `openvpn-client@client` with pushed DNS, these dotfiles apply pushed DNS to the VPN interface via systemd-resolved. Split DNS uses the server-pushed domain (e.g. `dhcp-option DOMAIN`) plus `work.example.invalid`. **Encrypted client.conf:** the repo can manage `/etc/openvpn/client/client.conf` encrypted with age — see [docs/openvpn.md](docs/openvpn.md) for setup, `chezmoi edit`, and apply. If you manage `client.conf` yourself instead, add the following to your own `/etc/openvpn/client/client.conf` (or equivalent):
+   - **Enable systemd-resolved:** `sudo systemctl enable --now systemd-resolved`. Ensure `/etc/resolv.conf` is the stub: `sudo ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf` (if not already).
+   - **Snippet for client.conf:**
+     ```ini
+     script-security 2
+     up /etc/openvpn/scripts/dns-up.sh
+     down /etc/openvpn/scripts/dns-down.sh
+     down-pre
+     up-restart
+     pull-filter ignore "ip-win32"
+     ```
+   - **Apply /etc files (run with sudo):** `sudo chezmoi apply -v`
+   - **Restart services:** `sudo systemctl restart polkit; sudo systemctl restart openvpn-client@client`
+   - **Verify:** `resolvectl status tun0` (after VPN is up; should show DNS servers and domains for the VPN link).
+
+   Chezmoi source paths for these files: `etc/openvpn/scripts/executable_dns-up.sh`, `etc/openvpn/scripts/executable_dns-down.sh`, `etc/polkit-1/rules.d/49-openvpn-resolved.rules` (targets set in `.chezmoi.toml`).
+
 ## Repository Structure Overview
 
 *   **`home/`**: Maps directly to user's home (`~`). Uses `dot_` prefix for hidden files.
+*   **`etc/`**: System files under `/etc` (OpenVPN scripts, polkit rules, encrypted client.conf). Applied with `sudo chezmoi apply`; targets defined in `.chezmoi.toml`.
+*   **`docs/`**: Documentation (e.g. [openvpn.md](docs/openvpn.md) for encrypted client config).
 *   **`apps/`**: Configs needing explicit path mapping in `chezmoi.toml` (e.g., Windows Terminal, PowerShell profile).
 *   **`packages/`**: OS-specific package lists for different package managers.
 *   **`scripts/`**: OS-specific installation scripts run by `apply`.

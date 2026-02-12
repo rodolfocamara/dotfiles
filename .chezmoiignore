@@ -10,4 +10,9 @@ scripts_legacy/
 # Ignore Windows-specific scripts on Linux/macOS
 {{ if ne .chezmoi.os "windows" }}
 .chezmoiscripts/**/*.ps1.tmpl
-{{ end }} 
+{{ end }}
+
+# Reject plaintext OpenVPN client config (only encrypted_client.conf.age is allowed)
+etc/openvpn/client/client.conf
+# Keep dir in git but do not apply .gitkeep to /etc
+etc/openvpn/client/.gitkeep 

@@ -1,6 +1,13 @@
 # Source: home/dot_config/chezmoi/chezmoi.toml.tmpl
 # Target: ~/.config/chezmoi/chezmoi.toml
 
+# --- Encryption (age) ---
+encryption = "age"
+[age]
+identity = "{{ .chezmoi.configDir }}/age.txt"
+# recipient: required for `chezmoi add --encrypt`; get with: age-keygen -y < ~/.config/chezmoi/age.txt
+# recipient = "age1xxxxxxxx..."
+
 # --- Windows Specific Mappings ---
 {{ if eq .chezmoi.os "windows" -}}
 

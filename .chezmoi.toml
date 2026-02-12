@@ -1,0 +1,15 @@
+recipient = "age1qgz7c54kkchzvfg3lgk2s7awe0t0w0sqdtvkfqxttf3tq92djs6qp3v5p4"
+
+# Map /etc files to system paths (apply with: sudo chezmoi apply -v)
+[etc/openvpn/scripts/executable_dns-up.sh]
+  target = "/etc/openvpn/scripts/dns-up.sh"
+
+[etc/openvpn/scripts/executable_dns-down.sh]
+  target = "/etc/openvpn/scripts/dns-down.sh"
+
+[etc/polkit-1/rules.d/49-openvpn-resolved.rules]
+  target = "/etc/polkit-1/rules.d/49-openvpn-resolved.rules"
+
+# OpenVPN client config (encrypted in source as encrypted_client.conf.age)
+[etc/openvpn/client/encrypted_client.conf.age]
+  target = "/etc/openvpn/client/client.conf"

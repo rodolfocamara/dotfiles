@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# OpenVPN up: apply pushed DNS/domain to systemd-resolved on the VPN interface.
+# Requires: polkit rule for user openvpn (org.freedesktop.resolve1).
+
+set -euo pipefail
+
+IFACE="${dev:-${1:-tun0}}"
+
+DNS=()
+DOMAIN=""
+
+# OpenVPN exposes pushed options as foreign_option_1, foreign_option_2, ...
+for var in $(compgen -v | grep -E '^foreign_option_[0-9]+$' | sort -V); do
+  val="${!var}"
+  case "$val" in
+    "dhcp-option DNS "*)
+      DNS+=( "${val#dhcp-option DNS }" )
+      ;;
+    "dhcp-option DOMAIN "*)
+      DOMAIN="${val#dhcp-option DOMAIN }"
+      ;;
+  esac
+done
+
+# Attach VPN DNS to this interface only
+if ((${#DNS[@]})); then
+  resolvectl dns "$IFACE" "${DNS[@]}" || true
+fi
+
+# Split DNS: only route pushed domain + work.example.invalid via VPN
+if [[ -n "${DOMAIN}" ]]; then
+  resolvectl domain "$IFACE" "~${DOMAIN}" "~work.example.invalid" || true
+fi
+
+resolvectl default-route "$IFACE" no || true
+resolvectl flush-caches || true
