@@ -49,6 +49,38 @@ Personal environment configurations (Linux & Windows) managed by [chezmoi](https
 *   `chezmoi edit <target_file>`: Edit a managed file (e.g., `chezmoi edit ~/.zshrc`).
 *   `chezmoi add <target_file>`: Add a new file to be managed.
 
+### Testar alterações na própria máquina (com ficheiros encriptados)
+
+1. **Garantir que o age desencripta:** chave privada em `~/.config/chezmoi/age.txt` e em `~/.config/chezmoi/chezmoi.toml` a secção `[age]` com `identity` apontar para esse ficheiro (o template já faz isso).
+2. **Source = este repo:** se editaste no clone local, inicializa com esse path para o apply usar este dir:
+   ```bash
+   chezmoi init /home/rcamara/Repos/dotfiles
+   ```
+3. **Aplicar (desencripta .age em memória):**
+   ```bash
+   chezmoi apply -v
+   ```
+   Depois, para alvos em `/etc` (OpenVPN, polkit, scripts):
+   ```bash
+   sudo chezmoi apply -v
+   ```
+   **Precisas dos dois:** só `chezmoi apply` aplica ao teu `~`; só `sudo` aplica ao `/etc` mas usa `/root` como home. Por isso: primeiro apply sem sudo (teu utilizador), depois com sudo (/etc).
+4. **Dry-run:** ver o que mudaria sem escrever: `chezmoi apply -n -v`.
+
+### Corrigir apply errado (~/home e ~/apps criados no home)
+
+Se em algum momento aplicaste sem o layout correcto e ficaste com pastas `~/home`, `~/apps`, etc.:
+
+1. **Fazer backup** (opcional): `cp -a ~/home ~/home.bak` e o mesmo para `~/apps` se quiseres recuperar algo.
+2. **Apagar as pastas erradas:** `rm -rf ~/home ~/apps` (e outras que tenham sido criadas no `~` por engano).
+3. **Re-inicializar o source** para o clone local e aplicar de novo:
+   ```bash
+   chezmoi init /caminho/para/dotfiles   # ex.: /home/rcamara/Repos/dotfiles
+   chezmoi apply -v
+   sudo chezmoi apply -v   # para alvos em /etc
+   ```
+   A partir daqui, `dot_config` vai para `~/.config`, `dot_zshrc` para `~/.zshrc`, etc., e não serão criadas `~/home` nem `~/apps`.
+
 ## OS-Specific Configuration
 
 This repository supports multiple operating systems with automatic detection:
@@ -121,7 +153,7 @@ CHEZMOI_OS=linux chezmoi apply -v
 
 ## Repository Structure Overview
 
-*   **`home/`**: Maps directly to user's home (`~`). Uses `dot_` prefix for hidden files.
+*   **Root `dot_*` / `dot_*/`**: Maps to user's home (`~`). E.g. `dot_config/` → `~/.config/`, `dot_zshrc` → `~/.zshrc`.
 *   **`etc/`**: System files under `/etc` (OpenVPN scripts, polkit rules, encrypted client.conf). Applied with `sudo chezmoi apply`; targets defined in `.chezmoi.toml`.
 *   **`docs/`**: Documentation (e.g. [openvpn.md](docs/openvpn.md) for encrypted client config).
 *   **`apps/`**: Configs needing explicit path mapping in `chezmoi.toml` (e.g., Windows Terminal, PowerShell profile).

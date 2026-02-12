@@ -1,7 +1,6 @@
 # === Zsh Setup ===
 autoload -Uz compinit; compinit
-# setopt correct
-unsetopt correct
+setopt correct
 HISTFILE=~/.zsh_history
 HISTSIZE=10000
 SAVEHIST=10000
@@ -9,7 +8,6 @@ setopt append_history hist_ignore_dups share_history
 
 # === Paths ===
 export PATH="$HOME/.local/bin:$PATH"
-export PAGER=cat
 
 # === Prompt (Starship) ===
 eval "$(starship init zsh)"
@@ -17,10 +15,12 @@ eval "$(starship init zsh)"
 # === fzf ===
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
+# === zoxide with cd override and auto tree view ===
+eval "$(zoxide init --cmd cd zsh)"
+function chpwd() { eza --tree --level=2 --icons }
 
-
-# === Real-time Suggestions & Syntax Highlighting ===
-# Tenta ~/.zsh (clone manual) ou pacote do sistema (Arch: zsh-autosuggestions, zsh-syntax-highlighting)
+# === Real-time Suggestions & Syntax Highlighting (optional) ===
+# User: ~/.zsh/... or Arch packages: /usr/share/zsh/plugins/...
 [[ -f ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh ]] && source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
 [[ -f /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]] && source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 [[ -f ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] && source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
@@ -61,30 +61,11 @@ alias gd="git diff"
 alias gco="git checkout"
 alias gl="git log --oneline --graph --decorate"
 
-# Docker shortcuts
-alias dc='docker compose'
-alias dce='docker compose exec'
-alias dcu='docker compose up -d'
-alias dcd='docker compose down'
-alias dcb='docker compose build'
-alias dcl='docker compose logs -f'
-alias dps='docker compose ps'
-export COMPOSE_BAKE=true
-
 # Fix execution flags (for Windows-created files)
 alias fix_exec="find . -type f ! -perm -u=x -exec chmod -x {} +"
 
-# alias bat="batcat"
-# alias cat='batcat --style=plain'
-# export FZF_DEFAULT_OPTS="--preview '[[ -f {} ]] && batcat --style=numbers --color=always {} | head -100'"
+alias bat="batcat"
+alias cat='batcat --style=plain'
+export FZF_DEFAULT_OPTS="--preview '[[ -f {} ]] && batcat --style=numbers --color=always {} | head -100'"
 
 alias grep='rg'
-
-fixcursor() {
-  find /mnt/c/Users/rcamara/.cursor/extensions/ms-vscode-remote.remote-wsl-* -name '*.sh' -exec chmod +x {} \; 2>/dev/null
-}
-
-# === zoxide with cd override ===
-export _ZO_DOCTOR=0  # Desativa mensagens de aviso do zoxide
-chpwd_functions=() # Limpa explicitamente os hooks de mudança de diretório
-eval "$(zoxide init --cmd cd zsh)"

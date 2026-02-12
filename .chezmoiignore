@@ -1,6 +1,10 @@
 # Standard ignored files/folders
 README.md
-scripts_legacy/
+
+# Ignore apps/ on Linux (only Windows uses PowerShell/Terminal mappings)
+{{ if ne .chezmoi.os "windows" }}
+apps/
+{{ end }}
 
 # Ignore Linux-specific scripts on Windows
 {{ if eq .chezmoi.os "windows" }}
@@ -8,8 +12,10 @@ scripts_legacy/
 {{ end }}
 
 # Ignore Windows-specific scripts on Linux/macOS
+# Ignore Windows-only content on Linux/macOS
 {{ if ne .chezmoi.os "windows" }}
 .chezmoiscripts/**/*.ps1.tmpl
+scripts/install-packages.windows.ps1
 {{ end }}
 
 # Reject plaintext OpenVPN client config (only encrypted_client.conf.age is allowed)
