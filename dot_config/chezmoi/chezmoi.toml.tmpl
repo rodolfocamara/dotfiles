@@ -7,7 +7,8 @@ sourceDir = "{{ if .sourceDirOverride }}{{ .sourceDirOverride }}{{ else }}{{ .ch
 # --- Encryption (age) ---
 encryption = "age"
 [age]
-identity = "{{ .chezmoi.homeDir }}/.config/chezmoi/age.txt"
+# index evita erro quando configDir não existe (versões antigas)
+identity = "{{ or (index .chezmoi "configDir") .chezmoi.homeDir }}/.config/chezmoi/age.txt"
 # recipient: required for `chezmoi add --encrypt`; get with: age-keygen -y < ~/.config/chezmoi/age.txt
 # recipient = "age1xxxxxxxx..."
 
