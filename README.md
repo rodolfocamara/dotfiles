@@ -49,19 +49,19 @@ Personal environment configurations (Linux & Windows) managed by [chezmoi](https
 *   `chezmoi edit <target_file>`: Edit a managed file (e.g., `chezmoi edit ~/.zshrc`).
 *   `chezmoi add <target_file>`: Add a new file to be managed.
 
-### Testar alterações na própria máquina (com ficheiros encriptados)
+### Testar alterações na própria máquina (com arquivos criptografados)
 
-1. **Garantir que o age desencripta:** chave privada em `~/.config/chezmoi/age.txt` e em `~/.config/chezmoi/chezmoi.toml` a secção `[age]` com `identity` apontar para esse ficheiro (o template já faz isso).
-2. **Source = este repo:** por defeito o chezmoi usa `~/.local/share/chezmoi`. Para o apply usar o teu clone (edições no repo a terem efeito):
-   - **Opção A — path fixo (no repo, só na tua máquina):** no clone, cria `.chezmoidata.toml` (está em `.gitignore`, não vai para o git) com o path do repo; o template usa esse valor e escreve-o no config, assim `chezmoi source-path` fica certo:
+1. **Garantir que o age descriptografa:** chave privada em `~/.config/chezmoi/age.txt` e em `~/.config/chezmoi/chezmoi.toml` a seção `[age]` com `identity` apontando para esse arquivo (o template já faz isso).
+2. **Source = este repo:** por padrão o chezmoi usa `~/.local/share/chezmoi`. Para o apply usar seu clone (edições no repo terem efeito):
+   - **Opção A — path fixo (no repo, só na sua máquina):** no clone, crie `.chezmoidata.toml` (está no `.gitignore`, não vai pro git) com o path do repo; o template usa esse valor e grava no config, assim `chezmoi source-path` fica certo:
      ```bash
      cp .chezmoidata.toml.example .chezmoidata.toml
-     # Edita .chezmoidata.toml e põe o teu path em sourceDirOverride
+     # Edite .chezmoidata.toml e coloque seu path em sourceDirOverride
      ```
-     Depois faz **um** apply (pode ser com source = symlink ou sync uma vez) para o config ser escrito com o path; nos applies seguintes o source já será o repo.
-   - **Opção B — symlink:** `mv ~/.local/share/chezmoi ~/.local/share/chezmoi.bak && ln -s /home/rcamara/Repos/dotfiles ~/.local/share/chezmoi` (não precisas de sourceDir no config).
+     Depois faça **um** apply (pode ser com source = symlink ou sync uma vez) para o config ser escrito com o path; nos applies seguintes o source já será o repo.
+   - **Opção B — symlink:** `mv ~/.local/share/chezmoi ~/.local/share/chezmoi.bak && ln -s /home/rcamara/Repos/dotfiles ~/.local/share/chezmoi` (não precisa de sourceDir no config).
    - **Alternativa — sincronizar:** antes do apply, copiar o repo para o source e depois `chezmoi apply -v`.
-3. **Aplicar (desencripta .age em memória):**
+3. **Aplicar (descriptografa .age em memória):**
    ```bash
    chezmoi apply -v
    ```
@@ -69,22 +69,22 @@ Personal environment configurations (Linux & Windows) managed by [chezmoi](https
    ```bash
    sudo chezmoi apply -v
    ```
-   **Precisas dos dois:** só `chezmoi apply` aplica ao teu `~`; só `sudo` aplica ao `/etc` mas usa `/root` como home. Por isso: primeiro apply sem sudo (teu utilizador), depois com sudo (/etc).
+   **Precisa dos dois:** só `chezmoi apply` aplica no seu `~`; só `sudo` aplica no `/etc` mas usa `/root` como home. Por isso: primeiro apply sem sudo (seu usuário), depois com sudo (/etc).
 4. **Dry-run:** ver o que mudaria sem escrever: `chezmoi apply -n -v`.
 
 ### Corrigir apply errado (~/home e ~/apps criados no home)
 
-Se em algum momento aplicaste sem o layout correcto e ficaste com pastas `~/home`, `~/apps`, etc.:
+Se em algum momento você aplicou sem o layout correto e ficou com pastas `~/home`, `~/apps`, etc.:
 
-1. **Fazer backup** (opcional): `cp -a ~/home ~/home.bak` e o mesmo para `~/apps` se quiseres recuperar algo.
+1. **Fazer backup** (opcional): `cp -a ~/home ~/home.bak` e o mesmo para `~/apps` se quiser recuperar algo.
 2. **Apagar as pastas erradas:** `rm -rf ~/home ~/apps` (e outras que tenham sido criadas no `~` por engano).
-3. **Re-inicializar o source** para o clone local e aplicar de novo:
+3. **Reinicializar o source** para o clone local e aplicar de novo:
    ```bash
    chezmoi init /caminho/para/dotfiles   # ex.: /home/rcamara/Repos/dotfiles
    chezmoi apply -v
    sudo chezmoi apply -v   # para alvos em /etc
    ```
-   A partir daqui, `dot_config` vai para `~/.config`, `dot_zshrc` para `~/.zshrc`, etc., e não serão criadas `~/home` nem `~/apps`.
+   A partir daí, `dot_config` vai para `~/.config`, `dot_zshrc` para `~/.zshrc`, etc., e não serão criadas `~/home` nem `~/apps`.
 
 ## OS-Specific Configuration
 
@@ -139,7 +139,7 @@ CHEZMOI_OS=linux chezmoi apply -v
    sudo timedatectl set-ntp true
    ```
 
-7. **OpenVPN + systemd-resolved (split DNS):** When using `openvpn-client@client` with pushed DNS, these dotfiles apply pushed DNS to the VPN interface via systemd-resolved. Split DNS uses the server-pushed domain (e.g. `dhcp-option DOMAIN`) plus `work.example.invalid`. **Encrypted client.conf:** the repo can manage `/etc/openvpn/client/client.conf` encrypted with age — see [docs/openvpn.md](docs/openvpn.md) for setup, `chezmoi edit`, and apply. If you manage `client.conf` yourself instead, add the following to your own `/etc/openvpn/client/client.conf` (or equivalent):
+7. **OpenVPN + systemd-resolved (split DNS):** When using `openvpn-client@client` with pushed DNS, these dotfiles apply pushed DNS to the VPN interface via systemd-resolved. Split DNS uses the server-pushed domain (e.g. `dhcp-option DOMAIN`) plus `work.example.invalid`. **Encrypted client.conf:** the repo can manage `/etc/openvpn/client/client.conf` encrypted with age — see [docs/openvpn.md](docs/openvpn.md). **User/password (no prompt on restart):** run once `sudo ./scripts/setup-openvpn-auth.sh` from the repo root, add `auth-user-pass /etc/openvpn/client/auth.txt` to client.conf via `CHEZMOI_DESTINATION_DIR=/ chezmoi edit /etc/openvpn/client/client.conf`, then `sudo chezmoi apply -S ~/Repos/dotfiles` (the `-S` is required so sudo uses your repo). If you manage `client.conf` yourself instead, add the following to your own `/etc/openvpn/client/client.conf` (or equivalent):
    - **Enable systemd-resolved:** `sudo systemctl enable --now systemd-resolved`. Ensure `/etc/resolv.conf` is the stub: `sudo ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf` (if not already).
    - **Snippet for client.conf:**
      ```ini

@@ -2,3 +2,6 @@ width=400
 height=250
 location=center
 show=drun
+allow_images=true
+insensitive=true
+prompt=Apps

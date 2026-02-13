@@ -1,0 +1,32 @@
+---
+description: Hyprland 0.53+ window rule syntax reference
+globs: "**/hypr/**"
+alwaysApply: false
+---
+
+# Hyprland 0.53 – Window Rules (v3 syntax)
+
+Old `windowrule = RULE, WINDOW` and `windowrulev2` are **deprecated**. Use block syntax:
+
+```conf
+windowrule {
+  name = rule-label        # required, must be first field
+  match:class = regex      # matcher (class, title, xwayland, float, etc.)
+  float = yes              # boolean rules use "yes" not "true"/"on"
+  size = 180 250           # width height
+  move = monitor_w-250 monitor_h-260   # supports monitor_w, monitor_h variables
+  suppress_event = maximize
+  no_focus = true
+}
+```
+
+Key points:
+- `name` MUST be the first field inside the block
+- `match:class`, `match:title`, `match:xwayland`, `match:float` for matching
+- Boolean values: `yes`/`no` (not `true`/`on`/`off`)
+- `noanim` is NOT a valid windowrule field (use global `animations { enabled = no }`)
+- Position variables: `monitor_w`, `monitor_h` (e.g. `move = 20 monitor_h-120`)
+- Old `100%-w-X` syntax may not work; use `monitor_w-X` / `monitor_h-X` instead
+
+Reference: https://wiki.hypr.land/Configuring/Window-Rules/
+Official example: https://github.com/hyprwm/Hyprland/blob/v0.53.0/example/hyprland.conf

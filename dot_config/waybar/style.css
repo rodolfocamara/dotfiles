@@ -1,14 +1,135 @@
+/* Waybar – vertical pill bar (Tokyo Night) */
+/* Sem hover – compatível com touch */
+
 * {
-    font-family: sans-serif;
-    font-size: 12px;
+  border: none;
+  border-radius: 0;
+  font-family: "JetBrainsMono Nerd Font", monospace;
+  font-size: 13px;
+  min-height: 0;
 }
+
+/* Desabilitar hover em tudo */
+*:hover {
+  background: transparent;
+}
+
+/* Barra transparente */
 window#waybar {
-    background: #2e3440;
-    color: #eceff4;
+  background: transparent;
+  color: #c0caf5;
 }
-#workspaces button.active {
-    background: #434c5e;
+
+/* ============ 3 Pills ============ */
+.modules-left,
+.modules-center,
+.modules-right {
+  background: #1a1b2e;
+  border-radius: 16px;
+  border: 1px solid #292e42;
+  padding: 10px 2px;
+  margin: 6px 0;
 }
-#clock {
-    padding: 0 8px;
+
+/* ============ Módulos base ============ */
+#custom-userpill,
+#custom-vpn,
+#custom-cpu,
+#custom-mem,
+#custom-bluetooth,
+#pulseaudio,
+#custom-time,
+#custom-date,
+#custom-power {
+  padding: 6px 4px;
+  margin: 6px 0;
+  border-radius: 10px;
+}
+
+/* ============ User pill (círculo) ============ */
+#custom-userpill {
+  font-size: 12px;
+  font-weight: bold;
+  color: #1a1b26;
+  background: #7aa2f7;
+  border-radius: 50%;
+  min-width: 30px;
+  min-height: 30px;
+  padding: 4px 4px;
+  margin: 4px 0;
+}
+#custom-userpill:hover {
+  background: #7aa2f7;
+}
+
+/* ============ VPN ============ */
+#custom-vpn { font-size: 18px; }
+#custom-vpn.connected { color: #9ece6a; }
+#custom-vpn.disconnected { color: #565f89; opacity: 0.5; }
+
+/* ============ CPU e Memória ============ */
+#custom-cpu, #custom-mem { font-size: 11px; }
+#custom-cpu.low,  #custom-mem.low  { color: #9ece6a; }
+#custom-cpu.mid,  #custom-mem.mid  { color: #e0af68; }
+#custom-cpu.high, #custom-mem.high { color: #ff9e64; }
+#custom-cpu.crit, #custom-mem.crit { color: #f7768e; }
+
+/* ============ Taskbar ============ */
+#taskbar { padding: 2px 0; }
+#taskbar button {
+  padding: 4px;
+  margin: 4px 0;
+  border-radius: 8px;
+  min-width: 24px;
+  min-height: 24px;
+}
+#taskbar button.active {
+  background: rgba(122, 162, 247, 0.25);
+}
+#taskbar button:hover {
+  background: transparent;
+}
+
+/* ============ Bluetooth (só ícone) ============ */
+#custom-bluetooth { font-size: 20px; }
+#custom-bluetooth.connected { color: #7aa2f7; }
+#custom-bluetooth.disconnected { color: #565f89; opacity: 0.5; }
+#custom-bluetooth.disabled { color: #565f89; opacity: 0.3; }
+
+/* ============ Volume (só ícone) ============ */
+#pulseaudio { font-size: 18px; color: #e0af68; }
+#pulseaudio.muted { color: #565f89; opacity: 0.5; }
+
+/* ============ Relógio ============ */
+#custom-time {
+  font-size: 18px;
+  font-weight: bold;
+  color: #7aa2f7;
+  padding: 6px 4px;
+  font-feature-settings: "tnum";
+}
+
+/* ============ Data ============ */
+#custom-date {
+  font-size: 11px;
+  font-weight: bold;
+  color: #9aa5ce;
+  padding: 2px 4px;
+  font-feature-settings: "tnum";
+}
+
+/* ============ Power ============ */
+#custom-power {
+  font-size: 18px;
+  color: #f7768e;
+  padding: 6px 4px;
+}
+
+/* ============ Tooltip ============ */
+tooltip {
+  background: #1a1b2e;
+  color: #c0caf5;
+  border: 1px solid #414868;
+  border-radius: 8px;
+  padding: 6px 10px;
 }

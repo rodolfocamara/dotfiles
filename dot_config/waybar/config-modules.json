@@ -1,0 +1,108 @@
+{
+  "modules-left": ["group/top"],
+  "modules-center": ["group/middle"],
+  "modules-right": ["group/bottom"],
+
+  "group/top": {
+    "orientation": "vertical",
+    "modules": [
+      "custom/userpill",
+      "custom/vpn",
+      "custom/cpu",
+      "custom/mem"
+    ]
+  },
+
+  "group/middle": {
+    "orientation": "vertical",
+    "modules": [
+      "wlr/taskbar"
+    ]
+  },
+
+  "group/bottom": {
+    "orientation": "vertical",
+    "modules": [
+      "custom/bluetooth",
+      "pulseaudio",
+      "custom/time",
+      "custom/date",
+      "custom/power"
+    ]
+  },
+
+  "custom/userpill": {
+    "exec": "~/.config/waybar/scripts/userpill.sh",
+    "return-type": "json",
+    "interval": "once",
+    "tooltip": true
+  },
+
+  "custom/vpn": {
+    "exec": "~/.config/waybar/scripts/vpn_tun0.sh",
+    "return-type": "json",
+    "interval": 5,
+    "tooltip": true
+  },
+
+  "custom/cpu": {
+    "exec": "~/.config/waybar/scripts/cpu_top.sh",
+    "return-type": "json",
+    "interval": 3,
+    "tooltip": true
+  },
+
+  "custom/mem": {
+    "exec": "~/.config/waybar/scripts/mem_top.sh",
+    "return-type": "json",
+    "interval": 3,
+    "tooltip": true
+  },
+
+  "wlr/taskbar": {
+    "format": "{icon}",
+    "icon-size": 24,
+    "tooltip-format": "{title}",
+    "on-click": "activate",
+    "on-click-middle": "close"
+  },
+
+  "custom/bluetooth": {
+    "exec": "~/.config/waybar/scripts/bt_headset.sh",
+    "return-type": "json",
+    "interval": 5,
+    "tooltip": true,
+    "on-click": "blueman-manager"
+  },
+
+  "pulseaudio": {
+    "format": "{icon}",
+    "format-icons": {
+      "default": ["\uf026", "\uf027", "\uf028"]
+    },
+    "format-muted": "\uf6a9",
+    "tooltip-format": "{volume}% — {desc}",
+    "scroll-step": 5,
+    "on-click": "pavucontrol"
+  },
+
+  "custom/time": {
+    "exec": "date '+{\"text\": \"%H\\n%M\", \"tooltip\": \"%A, %d %B %Y %H:%M:%S\"}'",
+    "interval": 60,
+    "return-type": "json",
+    "on-click": "gsimplecal"
+  },
+
+  "custom/date": {
+    "exec": "~/.config/waybar/scripts/date_fmt.sh",
+    "interval": 3600,
+    "return-type": "json"
+  },
+
+  "custom/power": {
+    "format": "\uf011",
+    "tooltip-format": "Power menu (wlogout)",
+    "on-click": "~/.config/waybar/scripts/powermenu.sh",
+    "interval": "once"
+  }
+}
