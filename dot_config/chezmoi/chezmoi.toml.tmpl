@@ -17,7 +17,7 @@ identity = "{{ or (index .chezmoi "configDir") .chezmoi.homeDir }}/.config/chezm
 
 # Map PowerShell Profile from apps/ directory
 # Target path is relative to the user's home directory
-["Documents/PowerShell/Microsoft.PowerShell_profile.ps1"]
+[ "Documents/PowerShell/Microsoft.PowerShell_profile.ps1" ]
     source = "apps/powershell/Microsoft.PowerShell_profile.ps1"
     type = "file" # Can be file or template
 
@@ -30,7 +30,7 @@ identity = "{{ or (index .chezmoi "configDir") .chezmoi.homeDir }}/.config/chezm
 
 # Windows package installation
 {{ if eq .chezmoi.os "windows" -}}
-["scripts/install-packages.windows.ps1"]
+[ "scripts/install-packages.windows.ps1" ]
     source = "scripts/install-packages.windows.ps1"
     type = "run_once"
     condition = "windows"
@@ -49,7 +49,7 @@ identity = "{{ or (index .chezmoi "configDir") .chezmoi.homeDir }}/.config/chezm
 
 # Arch Linux systems (specific package manager)
 {{ if eq $distro "arch" -}}
-["scripts/install-packages.linux-arch.sh"]
+[ "scripts/install-packages.linux-arch.sh" ]
     source = "scripts/install-packages.linux-arch.sh"
     type = "run_once"
     condition = "linux && arch"
@@ -57,7 +57,7 @@ identity = "{{ or (index .chezmoi "configDir") .chezmoi.homeDir }}/.config/chezm
 {{ else -}}
 # Debian-based systems and generic Linux fallback
 # This covers: Ubuntu, Debian, Mint, Pop!_OS, and other apt-based distros
-["scripts/install-packages.linux-generic.sh"]
+[ "scripts/install-packages.linux-generic.sh" ]
     source = "scripts/install-packages.linux-generic.sh"
     type = "run_once"
     condition = "linux"
@@ -66,17 +66,30 @@ identity = "{{ or (index .chezmoi "configDir") .chezmoi.homeDir }}/.config/chezm
 {{ end -}}
 
 # --- Interpreters ---
-# Explicitly tell chezmoi how to run scripts on different platforms
 [interpreters]
-  # Match standard .ps1 files on Windows
+{{ if eq .chezmoi.os "windows" -}}
   [interpreters.ps1]
     command = "powershell.exe"
     args = ["-NoProfile", "-NoLogo", "-ExecutionPolicy", "Bypass", "-File"]
-
-  # Run .sh scripts via WSL bash.exe on Windows (requires WSL)
   [interpreters.sh]
     command = "bash.exe"
     args = ["-eu", "-o", "pipefail"]
+{{ else -}}
+  # Linux/macOS: .sh com /bin/bash (evita bash.exe em WSL ou config antigo)
+  [interpreters.sh]
+    command = "/bin/bash"
+    args = ["-eu", "-o", "pipefail"]
+{{ end -}}
+
+# --- Targets para /etc (apply com: sudo chezmoi apply -v) ---
+[ "etc/openvpn/scripts/executable_dns-up.sh" ]
+  target = "/etc/openvpn/scripts/dns-up.sh"
+[ "etc/openvpn/scripts/executable_dns-down.sh" ]
+  target = "/etc/openvpn/scripts/dns-down.sh"
+[ "etc/polkit-1/rules.d/49-openvpn-resolved.rules" ]
+  target = "/etc/polkit-1/rules.d/49-openvpn-resolved.rules"
+[ "etc/openvpn/client/encrypted_client.conf.age" ]
+  target = "/etc/openvpn/client/client.conf"
 
 # --- General chezmoi settings can go here ---
 # Example: Use VS Code for editing
