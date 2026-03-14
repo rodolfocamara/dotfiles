@@ -1,0 +1,11 @@
+#!/bin/bash
+# direnv configuration
+# This file is managed by chezmoi
+
+# Load dotenv library
+source ~/.config/direnv/lib/dotenv.bash
+
+# Load .env file if it exists
+if [[ -f .env ]]; then
+    dotenv .env
+fi 
