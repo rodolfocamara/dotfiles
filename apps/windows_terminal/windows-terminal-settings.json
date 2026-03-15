@@ -31,9 +31,13 @@
     ],
     "copyFormatting": "none",
     "copyOnSelect": false,
-    "defaultProfile": "{2c4de342-38b7-51cf-b940-2309a097f518}",
+    "defaultProfile": "{d0fa5d58-e7dd-5fba-b4a0-47e709896e13}",
     "keybindings": 
     [
+        {
+            "id": null,
+            "keys": "alt+enter"
+        },
         {
             "id": "User.copy.644BA8F2",
             "keys": "ctrl+c"
@@ -49,8 +53,13 @@
         {
             "id": "User.splitPane.A6751878",
             "keys": "alt+shift+d"
+        },
+        {
+            "id": "Terminal.CloseTab",
+            "keys": "ctrl+w"
         }
     ],
+    "language": "en-US",
     "newTabMenu": 
     [
         {
@@ -59,24 +68,26 @@
     ],
     "profiles": 
     {
-        "defaults": {
-            "font": {
-              "face": "JetBrainsMono Nerd Font",
-              "size": 11
-            },
+        "defaults": 
+        {
             "colorScheme": "Campbell",
+            "font": 
+            {
+                "face": "JetBrainsMono Nerd Font",
+                "size": 11
+            },
+            "opacity": 90,
             "startingDirectory": "%USERPROFILE%\\Repos",
-            "useAcrylic": true,
-            "acrylicOpacity": 0.9
+            "useAcrylic": true
         },
         "list": 
         [
             {
-                "guid": "{2c4de342-38b7-51cf-b940-2309a097f518}",
+                "guid": "{d0fa5d58-e7dd-5fba-b4a0-47e709896e13}",
                 "hidden": false,
                 "name": "WSL",
                 "source": "Windows.Terminal.WSL",
-                "startingDirectory": "//wsl$/Ubuntu/home/uranows"
+                "startingDirectory": "~"
             },
             {
                 "commandline": "C:\\Program Files\\Git\\bin\\bash.exe",
@@ -130,4 +141,4 @@
     },
     "schemes": [],
     "themes": []
-} 
+}

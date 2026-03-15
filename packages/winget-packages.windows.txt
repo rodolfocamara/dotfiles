@@ -1,5 +1,11 @@
-eza-community.eza
-Starship.Starship
+# Shell & terminal
 Microsoft.PowerShell
 Microsoft.WindowsTerminal
-Git.Git 
+Starship.Starship
+Git.Git
+
+# CLI tools
+eza-community.eza
+ajeetdsouza.zoxide
+
+# Tiling WM stack
