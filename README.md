@@ -6,6 +6,7 @@ Cross-platform dev environment managed by [chezmoi](https://chezmoi.io/).
 
 | Platform | Stack |
 |---|---|
+| **Windows** | PowerShell, Windows Terminal |
 | **Arch Linux** | Hyprland + waybar + wofi, kitty, OpenVPN + systemd-resolved |
 | **Generic Linux** | zsh, starship, direnv, common CLI tools |
 
@@ -30,46 +31,18 @@ sudo chezmoi apply -v
 ```
 dot_*                    --> ~/           Shell configs, .gitconfig, .envrc
 dot_config/              --> ~/.config/   App configs (starship, hypr, waybar, kitty, etc.)
+apps/                    --> (mapped)     Windows-only (terminal, pwsh)
 etc/                     --> /etc/        System files (OpenVPN, polkit) - requires sudo
 packages/                                OS-specific package lists
 scripts/                                 Setup and install scripts
 docs/                                    Guides (OpenVPN, waybar themes)
 ```
 
-## Windows tiling setup
+## Windows setup
 
-Three-monitor layout: 2 stacked ultrawides + laptop on the right.
-
-**Keybindings** (win key as modifier):
-
-| Action | Binding |
-|---|---|
-| Focus window | `win + arrows` |
-| Move window | `win + shift + arrows` |
-| Resize window | `win + alt + arrows` |
-| Switch workspace | `win + 1/2` or `win + ctrl + left/right` |
-| Move to workspace | `win + shift + 1/2` |
-| Focus monitor | `win + ctrl + shift + arrows` |
-| Move to monitor | `win + ctrl + alt + arrows` |
-| Open terminal | `win + X` |
-| Open browser | `win + C` |
-| Promote window | `win + Enter` |
-| Toggle float | `win + T` |
-| Toggle monocle | `win + F` |
-| Close window | `win + Q` |
-| Retile | `win + shift + E` |
-| Flip layout | `win + shift + X` / `win + Y` |
-| Reload config | `win + shift + R` |
-
-
-**First-time Windows setup:**
 ```powershell
 # Install packages
 winget import packages/winget-packages.windows.txt
-
-# Apply registry tweaks (disable snap assist, animations, auto-hide taskbar)
-powershell -ExecutionPolicy Bypass -File scripts/setup-windows-tweaks.ps1
-Stop-Process -Name explorer -Force
 ```
 
 ## Arch Linux (Hyprland)
@@ -100,11 +73,6 @@ chezmoi apply -v
 
 # Add a new file to management
 chezmoi add ~/.config/new-app/config.toml
-```
-
-**Windows configs** (not managed by chezmoi apply):
-```powershell
-# Copy to Windows locations and reload
 ```
 
 ## Encrypted files

@@ -8,4 +8,5 @@ Git.Git
 eza-community.eza
 ajeetdsouza.zoxide
 
-# Tiling WM stack
+# Hotkeys & window management
+AutoHotkey.AutoHotkey
