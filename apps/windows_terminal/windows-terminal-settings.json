@@ -1,0 +1,310 @@
+{
+    "$help": "https://aka.ms/terminal-documentation",
+    "$schema": "https://aka.ms/terminal-profiles-schema",
+    "actions": 
+    [
+        {
+            "command": 
+            {
+                "action": "copy",
+                "singleLine": false
+            },
+            "id": "User.copy.644BA8F2"
+        },
+        {
+            "command": "paste",
+            "id": "User.paste"
+        },
+        {
+            "command": "find",
+            "id": "User.find"
+        },
+        {
+            "command": 
+            {
+                "action": "splitPane",
+                "split": "auto",
+                "splitMode": "duplicate"
+            },
+            "id": "User.splitPane.A6751878"
+        },
+        {
+            "command":
+            {
+                "action": "sendInput",
+                "input": "\n"
+            },
+            "id": "User.SendLF"
+        },
+        {
+            "command": "closeTab",
+            "id": "User.closeTab"
+        },
+        {
+            "command": "openWindowRenamer",
+            "id": "User.renameWindow"
+        },
+        {
+            "command": { "action": "moveFocus", "direction": "left" },
+            "id": "User.moveFocusLeft"
+        },
+        {
+            "command": { "action": "moveFocus", "direction": "right" },
+            "id": "User.moveFocusRight"
+        },
+        {
+            "command": { "action": "moveFocus", "direction": "up" },
+            "id": "User.moveFocusUp"
+        },
+        {
+            "command": { "action": "moveFocus", "direction": "down" },
+            "id": "User.moveFocusDown"
+        },
+        {
+            "command": { "action": "resizePane", "direction": "left" },
+            "id": "User.resizePaneLeft"
+        },
+        {
+            "command": { "action": "resizePane", "direction": "right" },
+            "id": "User.resizePaneRight"
+        },
+        {
+            "command": { "action": "resizePane", "direction": "up" },
+            "id": "User.resizePaneUp"
+        },
+        {
+            "command": { "action": "resizePane", "direction": "down" },
+            "id": "User.resizePaneDown"
+        },
+        {
+            "command": "togglePaneZoom",
+            "id": "User.togglePaneZoom"
+        },
+        {
+            "command": "commandPalette",
+            "id": "User.commandPalette"
+        },
+        {
+            "command":
+            {
+                "action": "globalSummon",
+                "name": "_quake",
+                "monitor": "toCurrent",
+                "desktop": "toCurrent",
+                "dropdownDuration": 200,
+                "toggleVisibility": true
+            },
+            "id": "User.quakeSummon"
+        }
+    ],
+    "copyFormatting": "none",
+    "copyOnSelect": false,
+    "defaultProfile": "{d0fa5d58-e7dd-5fba-b4a0-47e709896e13}",
+    "windowingBehavior": "useExisting",
+    "keybindings": 
+    [
+        {
+            "id": "User.closeTab",
+            "keys": "ctrl+w"
+        },
+        {
+            "id": "User.renameWindow",
+            "keys": "ctrl+shift+r"
+        },
+        {
+            "id": null,
+            "keys": "alt+enter"
+        },
+        {
+            "id": "Terminal.OpenNewTab",
+            "keys": "ctrl+t"
+        },
+        {
+            "id": "User.copy.644BA8F2",
+            "keys": "ctrl+c"
+        },
+        {
+            "id": "User.find",
+            "keys": "ctrl+shift+f"
+        },
+        {
+            "id": "User.paste",
+            "keys": "ctrl+v"
+        },
+        {
+            "id": "User.SendLF",
+            "keys": "shift+enter"
+        },
+        {
+            "id": "User.splitPane.A6751878",
+            "keys": "alt+shift+d"
+        },
+        {
+            "id": "Terminal.ScrollUpPage",
+            "keys": "shift+pgup"
+        },
+        {
+            "id": "Terminal.ScrollDownPage",
+            "keys": "shift+pgdn"
+        },
+        {
+            "id": "Terminal.ToggleMarkMode",
+            "keys": "ctrl+m"
+        },
+        {
+            "id": "User.moveFocusLeft",
+            "keys": "alt+left"
+        },
+        {
+            "id": "User.moveFocusRight",
+            "keys": "alt+right"
+        },
+        {
+            "id": "User.moveFocusUp",
+            "keys": "alt+up"
+        },
+        {
+            "id": "User.moveFocusDown",
+            "keys": "alt+down"
+        },
+        {
+            "id": "User.resizePaneLeft",
+            "keys": "alt+shift+left"
+        },
+        {
+            "id": "User.resizePaneRight",
+            "keys": "alt+shift+right"
+        },
+        {
+            "id": "User.resizePaneUp",
+            "keys": "alt+shift+up"
+        },
+        {
+            "id": "User.resizePaneDown",
+            "keys": "alt+shift+down"
+        },
+        {
+            "id": "User.togglePaneZoom",
+            "keys": "alt+shift+z"
+        },
+        {
+            "id": "User.commandPalette",
+            "keys": "ctrl+shift+p"
+        },
+        {
+            "id": "User.quakeSummon",
+            "keys": "ctrl+shift+space"
+        }
+    ],
+    "language": "en-US",
+    "newTabMenu": 
+    [
+        {
+            "type": "remainingProfiles"
+        }
+    ],
+    "profiles": 
+    {
+        "defaults":
+        {
+            "adjustIndistinguishableColors": "never",
+            "bellStyle": "none",
+            "colorScheme": "Monokai Soda",
+            "font":
+            {
+                "face": "JetBrainsMono Nerd Font",
+                "size": 11
+            },
+            "historySize": 50000,
+            "opacity": 90,
+            "snapOnInput": false,
+            "startingDirectory": "%USERPROFILE%\\Repos",
+            "useAcrylic": false
+        },
+        "list": 
+        [
+            {
+                "guid": "{d0fa5d58-e7dd-5fba-b4a0-47e709896e13}",
+                "hidden": false,
+                "name": "WSL",
+                "source": "Windows.Terminal.WSL",
+                "startingDirectory": "~"
+            },
+            {
+                "commandline": "C:\\Program Files\\Git\\bin\\bash.exe",
+                "guid": "{00000000-0000-0000-0000-000000000000}",
+                "icon": "C:\\Program Files\\Git\\mingw64\\share\\git\\git-for-windows.ico",
+                "name": "Bash"
+            },
+            {
+                "guid": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
+                "hidden": false,
+                "name": "PowerShell",
+                "source": "Windows.Terminal.PowershellCore"
+            },
+            {
+                "commandline": "%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+                "guid": "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}",
+                "hidden": true,
+                "name": "Windows PowerShell"
+            },
+            {
+                "commandline": "%SystemRoot%\\System32\\cmd.exe",
+                "guid": "{0caa0dad-35be-5f56-a8ff-afceeeaa6101}",
+                "hidden": true,
+                "name": "Command Prompt"
+            },
+            {
+                "guid": "{b453ae62-4e3d-5e58-b989-0a998ec441b8}",
+                "hidden": true,
+                "name": "Azure Cloud Shell",
+                "source": "Windows.Terminal.Azure"
+            },
+            {
+                "guid": "{1f50aaca-360c-536b-831d-46d4d29db261}",
+                "hidden": true,
+                "name": "Developer Command Prompt for VS 2022",
+                "source": "Windows.Terminal.VisualStudio"
+            },
+            {
+                "guid": "{3dedd648-c1d9-5948-9cac-56a9e102b8fa}",
+                "hidden": true,
+                "name": "Developer PowerShell for VS 2022",
+                "source": "Windows.Terminal.VisualStudio"
+            },
+            {
+                "guid": "{16208362-94fc-5b1f-a491-5b2624d5ab56}",
+                "hidden": true,
+                "name": "Visual Studio Debug Console",
+                "source": "VSDebugConsole"
+            }
+        ]
+    },
+    "schemes":
+    [
+        {
+            "name": "Monokai Soda",
+            "background": "#1A1A1A",
+            "foreground": "#C4C5B5",
+            "cursorColor": "#F6F7EC",
+            "selectionBackground": "#343434",
+            "black": "#1A1A1A",
+            "red": "#F4005F",
+            "green": "#98E024",
+            "yellow": "#FA8419",
+            "blue": "#9D65FF",
+            "purple": "#F4005F",
+            "cyan": "#58D1EB",
+            "white": "#C4C5B5",
+            "brightBlack": "#625E4C",
+            "brightRed": "#F4005F",
+            "brightGreen": "#98E024",
+            "brightYellow": "#E0D561",
+            "brightBlue": "#9D65FF",
+            "brightPurple": "#F4005F",
+            "brightCyan": "#58D1EB",
+            "brightWhite": "#F6F6EF"
+        }
+    ],
+    "themes": []
+}
