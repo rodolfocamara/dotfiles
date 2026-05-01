@@ -228,7 +228,7 @@
                 "hidden": false,
                 "name": "WSL",
                 "source": "Windows.Terminal.WSL",
-                "startingDirectory": "~"
+                "startingDirectory": "\\\\wsl.localhost\\Ubuntu\\home\\rcamara\\Repos"
             },
             {
                 "commandline": "C:\\Program Files\\Git\\bin\\bash.exe",
