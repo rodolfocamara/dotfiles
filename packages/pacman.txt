@@ -4,7 +4,6 @@ git
 chezmoi
 zsh
 zsh-autosuggestions
-zsh-syntax-highlighting
 starship
 fzf
 zoxide

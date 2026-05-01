@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  claude-sync-skills [--profiles personal,work] [--no-legacy] [--dry-run]
+
+Merges custom Claude skills across the split profile setup without copying any
+session state.
+
+Sources:
+  - ~/.claude/skills                  (legacy shared skills, unless --no-legacy)
+  - ~/.claude-personal/skills
+  - ~/.claude-work/skills
+  - ~/.claude-personal/plugins/*      (only top-level plugin dirs with SKILL.md)
+  - ~/.claude-work/plugins/*          (only top-level plugin dirs with SKILL.md)
+
+Defaults:
+  --profiles personal,work
+  --no-legacy disabled
+  --dry-run disabled
+USAGE
+}
+
+fail() {
+  printf 'error: %s\n' "$*" >&2
+  exit 1
+}
+
+path_is_in_sync() {
+  local src="$1"
+  local dst="$2"
+
+  if [[ -d "$src" && -d "$dst" ]]; then
+    diff -qr "$src" "$dst" >/dev/null 2>&1
+    return
+  fi
+
+  return 1
+}
+
+backup_dir_if_changed() {
+  local src="$1"
+  local dst="$2"
+
+  if [[ -d "$dst" ]] && ! path_is_in_sync "$src" "$dst"; then
+    cp -a "$dst" "$dst.backup.$(date +%s)"
+  fi
+}
+
+copy_tree() {
+  local src="$1"
+  local dst="$2"
+  local label="$3"
+  local dry_run="$4"
+
+  if [[ -d "$dst" ]] && path_is_in_sync "$src" "$dst"; then
+    printf 'Already in sync: %s\n' "$label"
+    return 0
+  fi
+
+  printf 'Syncing: %s\n' "$label"
+  if [[ "$dry_run" == "1" ]]; then
+    return 0
+  fi
+
+  backup_dir_if_changed "$src" "$dst"
+  rm -rf "$dst"
+  mkdir -p "$(dirname "$dst")"
+  cp -a "$src" "$dst"
+}
+
+record_candidate() {
+  local key="$1"
+  local src="$2"
+
+  if [[ -n "${candidate_dirs[$key]:-}" ]]; then
+    if path_is_in_sync "${candidate_dirs[$key]}" "$src"; then
+      return 0
+    fi
+
+    printf 'conflict for %s\n' "$key" >&2
+    printf '  source A: %s\n' "${candidate_dirs[$key]}" >&2
+    printf '  source B: %s\n' "$src" >&2
+    fail "resolve the conflicting custom skill/plugin before syncing"
+  fi
+
+  candidate_dirs[$key]="$src"
+}
+
+collect_skill_dirs() {
+  local root="$1"
+  [[ -d "$root" ]] || return 0
+
+  local dir
+  while IFS= read -r -d '' dir; do
+    [[ -f "$dir/SKILL.md" ]] || continue
+    record_candidate "skills/$(basename "$dir")" "$dir"
+  done < <(find "$root" -mindepth 1 -maxdepth 1 -type d -print0)
+}
+
+collect_plugin_dirs() {
+  local root="$1"
+  [[ -d "$root" ]] || return 0
+
+  local dir
+  while IFS= read -r -d '' dir; do
+    local name
+    name="$(basename "$dir")"
+    case "$name" in
+      cache|data|marketplaces)
+        continue
+        ;;
+    esac
+    [[ -f "$dir/SKILL.md" ]] || continue
+    record_candidate "plugins/$name" "$dir"
+  done < <(find "$root" -mindepth 1 -maxdepth 1 -type d -print0)
+}
+
+profile_root() {
+  case "$1" in
+    personal) printf '%s/.claude-personal\n' "$HOME" ;;
+    work) printf '%s/.claude-work\n' "$HOME" ;;
+    *) fail "invalid profile '$1' (expected personal or work)" ;;
+  esac
+}
+
+profiles_csv="personal,work"
+include_legacy="1"
+dry_run="0"
+
+while (($#)); do
+  case "$1" in
+    --profiles)
+      [[ $# -ge 2 ]] || fail "--profiles requires a value"
+      profiles_csv="$2"
+      shift 2
+      ;;
+    --no-legacy)
+      include_legacy="0"
+      shift
+      ;;
+    --dry-run)
+      dry_run="1"
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      fail "unknown argument: $1"
+      ;;
+  esac
+done
+
+declare -A candidate_dirs=()
+declare -a target_profiles=()
+
+IFS=',' read -r -a target_profiles <<<"$profiles_csv"
+((${#target_profiles[@]} > 0)) || fail "no target profiles selected"
+
+if [[ "$include_legacy" == "1" ]]; then
+  collect_skill_dirs "$HOME/.claude/skills"
+fi
+
+collect_skill_dirs "$HOME/.claude-personal/skills"
+collect_skill_dirs "$HOME/.claude-work/skills"
+collect_plugin_dirs "$HOME/.claude-personal/plugins"
+collect_plugin_dirs "$HOME/.claude-work/plugins"
+
+((${#candidate_dirs[@]} > 0)) || fail "no custom skills or plugin skills found to sync"
+
+for profile in "${target_profiles[@]}"; do
+  profile="${profile//[[:space:]]/}"
+  [[ -n "$profile" ]] || continue
+
+  root="$(profile_root "$profile")"
+  mkdir -p "$root"
+
+  while IFS= read -r key; do
+    copy_tree "${candidate_dirs[$key]}" "$root/$key" "$profile:$key" "$dry_run"
+  done < <(printf '%s\n' "${!candidate_dirs[@]}" | sort)
+done
+
+printf 'Synced %d custom skill entries across profile(s): %s\n' "${#candidate_dirs[@]}" "$profiles_csv"
+

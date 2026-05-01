@@ -2,15 +2,15 @@
 
 Cross-platform dev environment managed by [chezmoi](https://chezmoi.io/).
 
-## What's included
-
 | Platform | Stack |
 |---|---|
 | **Windows** | PowerShell, Windows Terminal |
-| **Arch Linux** | Hyprland + waybar + wofi, kitty, OpenVPN + systemd-resolved |
-| **Generic Linux** | zsh, starship, direnv, common CLI tools |
+| **Arch Linux (Hyprland)** | waybar, wofi, kitty, OpenVPN + systemd-resolved |
+| **Linux / WSL** | zsh, starship, zoxide, fzf, eza, bat, ripgrep |
 
-## Quick start
+## Install (fresh machine)
+
+Source dir is set to this clone — no duplication.
 
 ```bash
 # 1. Install chezmoi
@@ -18,86 +18,90 @@ Cross-platform dev environment managed by [chezmoi](https://chezmoi.io/).
 # Arch:     sudo pacman -S chezmoi
 # Debian:   sudo apt install chezmoi -y
 
-# 2. Init and apply
-chezmoi init https://github.com/uranows/dotfiles.git
+# 2. Clone the repo where you want it
+git clone https://github.com/r-camara/dotfiles ~/Repos/dotfiles
+
+# 3. Point chezmoi at this clone
+mkdir -p ~/.config/chezmoi
+echo 'sourceDir = "~/Repos/dotfiles"' > ~/.config/chezmoi/chezmoi.toml
+
+# 4. Apply
 chezmoi apply -v
 
-# 3. For /etc targets (OpenVPN, polkit)
+# 5. /etc targets (OpenVPN, polkit) — Linux only
 sudo chezmoi apply -v
 ```
 
-## Repository structure
-
-```
-dot_*                    --> ~/           Shell configs, .gitconfig, .envrc
-dot_config/              --> ~/.config/   App configs (starship, hypr, waybar, kitty, etc.)
-apps/                    --> (mapped)     Windows-only (terminal, pwsh)
-etc/                     --> /etc/        System files (OpenVPN, polkit) - requires sudo
-packages/                                OS-specific package lists
-scripts/                                 Setup and install scripts
-docs/                                    Guides (OpenVPN, waybar themes)
-```
-
-## Windows setup
-
-```powershell
-# Install packages
-winget import packages/winget-packages.windows.txt
-```
-
-## Arch Linux (Hyprland)
+## Daily workflow
 
 ```bash
-# Optional: full bootstrap (pacman + yay + AUR)
+# Edit in the repo, then deploy
+vim ~/Repos/dotfiles/dot_zshrc
+cma                          # alias for: chezmoi apply
+
+# Or capture changes you made directly in $HOME back into the repo
+chezmoi re-add ~/.zshrc
+
+# Pull updates from GitHub
+cd ~/Repos/dotfiles && git pull && cma
+```
+
+## Layout
+
+```
+dot_*           --> ~/           shell, git, envrc
+dot_config/     --> ~/.config/   starship, hypr, waybar, kitty
+apps/           --> Windows-only (PowerShell, Windows Terminal)
+etc/            --> /etc/        system files (sudo apply)
+packages/                        per-OS package lists
+scripts/                         setup helpers
+docs/                            guides
+```
+
+## Per-OS package install
+
+```bash
+# Windows
+winget import packages/winget-packages.windows.txt
+
+# Arch
 ./scripts/bootstrap-arch.sh
 
-# Monitor config: edit ~/.config/hypr/hyprland.conf
-# List monitors: hyprctl monitors
-# List keyboards: hyprctl devices
+# Debian / Ubuntu / WSL
+xargs sudo apt install -y < packages/apt-packages.linux-generic.txt
 ```
 
-See [docs/openvpn.md](docs/openvpn.md) for encrypted VPN config with age.
+## ble.sh on Git Bash (Windows)
 
-## Updating configs
-
-**Workflow:** edit the source files in this repo, then deploy.
+`dot_bashrc` sources [ble.sh](https://github.com/akinomyoga/ble.sh) — fish-like autosuggestions, syntax highlighting, and completion for bash. No-op if not installed.
 
 ```bash
-# Edit and apply
-chezmoi edit ~/.zshrc        # opens the source file
-chezmoi apply -v             # deploys changes
-
-# Or edit directly in the repo and apply
-vim ~/Repos/dotfiles/dot_zshrc
-chezmoi apply -v
-
-# Add a new file to management
-chezmoi add ~/.config/new-app/config.toml
+# In Git Bash (Windows)
+mkdir -p ~/.local/{share,tmp} && cd ~/.local/tmp
+curl -L -o ble.tar.xz https://github.com/akinomyoga/ble.sh/releases/download/v0.4.0-devel3/ble-0.4.0-devel3-2.tar.xz
+tar -xf ble.tar.xz
+cp -r ble-*/. ~/.local/share/blesh/
+rm -rf ble-* ble.tar.xz
 ```
 
-## Encrypted files
+Cost: ~80ms added to Git Bash startup.
 
-Uses [age](https://github.com/FiloSottile/age) for encrypting sensitive configs (e.g. OpenVPN client.conf).
+## Encrypted files (age)
 
 ```bash
-# Setup: create age key
+# First time: create key
 age-keygen -o ~/.config/chezmoi/age.txt
 
-# Add encrypted file
+# Encrypt a sensitive file under management
 chezmoi add --encrypt /etc/openvpn/client/client.conf
 ```
 
-## Testing locally
+See [docs/openvpn.md](docs/openvpn.md) for VPN setup.
 
-Point chezmoi source to your clone instead of `~/.local/share/chezmoi`:
+## Useful flags
 
 ```bash
-# Option A: symlink
-ln -sf ~/Repos/dotfiles ~/.local/share/chezmoi
-
-# Option B: set in .chezmoidata.toml (gitignored)
-echo 'sourceDirOverride = "/home/rcamara/Repos/dotfiles"' > .chezmoidata.toml
-chezmoi apply -v
+chezmoi apply -n -v          # dry-run with diff
+chezmoi diff                 # what would change
+chezmoi status               # what differs between source and home
 ```
-
-Dry-run: `chezmoi apply -n -v`

@@ -1,8 +1,9 @@
 # Source: dot_config/chezmoi/chezmoi.toml.tmpl
 # Target: ~/.config/chezmoi/chezmoi.toml
 
-# sourceDir: fixo em .chezmoidata.toml (local, gitignored) ou dinâmico (source actual)
-sourceDir = "{{ if .sourceDirOverride }}{{ .sourceDirOverride }}{{ else }}{{ .chezmoi.sourceDir }}{{ end }}"
+# sourceDir: opcional override via .chezmoidata.toml (local, gitignored); senão usa o source dir atual
+{{- $override := (index . "sourceDirOverride") | default "" }}
+sourceDir = "{{ if $override }}{{ $override }}{{ else }}{{ .chezmoi.sourceDir }}{{ end }}"
 
 # --- Encryption (age) ---
 encryption = "age"

@@ -57,3 +57,13 @@ function mkcd { param([string]$dir) New-Item -ItemType Directory -Path $dir -For
 function which { param([string]$cmd) Get-Command $cmd -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source }
 
 Set-Alias winget "$env:LOCALAPPDATA\Microsoft\WindowsApps\winget.exe"
+
+# ── Claude Code — perfil work (default é ~/.claude-personal via env var do SO)
+$_codeExe = (Get-Command -CommandType Application code -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source)
+if ($_codeExe) {
+    function codew {
+        $prev = $env:CLAUDE_CONFIG_DIR
+        $env:CLAUDE_CONFIG_DIR = "$env:USERPROFILE\.claude-work"
+        try { & $_codeExe @args } finally { $env:CLAUDE_CONFIG_DIR = $prev }
+    }
+}

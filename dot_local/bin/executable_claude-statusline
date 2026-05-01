@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+input="$(cat || true)"
+
+fallback_dir="${PWD/#$HOME/\~}"
+
+if ! command -v jq >/dev/null 2>&1; then
+  printf "%s" "$fallback_dir"
+  exit 0
+fi
+
+cwd="$(printf "%s" "$input" | jq -r '.workspace.current_dir // .cwd // empty' 2>/dev/null || true)"
+model="$(printf "%s" "$input" | jq -r '.model.display_name // empty' 2>/dev/null || true)"
+used_pct="$(printf "%s" "$input" | jq -r '.context_window.used_percentage // empty' 2>/dev/null || true)"
+
+if [[ -n "$cwd" ]]; then
+  display_dir="${cwd/#$HOME/\~}"
+else
+  display_dir="$fallback_dir"
+fi
+
+git_branch=""
+if command -v git >/dev/null 2>&1; then
+  git_branch="$(git -C "${cwd:-$PWD}" --no-optional-locks branch --show-current 2>/dev/null || true)"
+fi
+
+yellow="\033[33m"
+cyan="\033[36m"
+dim="\033[2m"
+reset="\033[0m"
+
+output=""
+output+=$(printf "${yellow}${display_dir}${reset}")
+
+if [[ -n "$git_branch" ]]; then
+  output+=$(printf "  ${cyan}${git_branch}${reset}")
+fi
+
+if [[ -n "$model" ]]; then
+  output+=$(printf "  ${dim}${model}${reset}")
+fi
+
+if [[ -n "$used_pct" ]]; then
+  printf_pct="$(printf "%.0f" "$used_pct" 2>/dev/null || printf "%s" "$used_pct")"
+  output+=$(printf "  ${dim}ctx: ${printf_pct}%%${reset}")
+fi
+
+printf "%b" "$output"
