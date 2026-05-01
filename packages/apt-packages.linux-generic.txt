@@ -1,5 +1,7 @@
 zsh
+zsh-autosuggestions
 starship
+zoxide
 git
 curl
 eza
@@ -10,4 +12,4 @@ fd-find
 tldr
 build-essential
 cmake
-libssl-dev 
+libssl-dev

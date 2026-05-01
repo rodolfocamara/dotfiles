@@ -1,0 +1,5 @@
+# Sourced on every zsh invocation, before /etc/zsh/zshrc.
+#
+# Skip Ubuntu's global compinit in /etc/zsh/zshrc — we run our own cached
+# compinit in ~/.zshrc. Saves ~300ms of startup.
+skip_global_compinit=1

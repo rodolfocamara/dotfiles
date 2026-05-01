@@ -1,71 +1,148 @@
-# === Zsh Setup ===
-autoload -Uz compinit; compinit
-setopt correct
+# =============================================================================
+# History
+# =============================================================================
 HISTFILE=~/.zsh_history
 HISTSIZE=10000
 SAVEHIST=10000
 setopt append_history hist_ignore_dups share_history
 
-# === Paths ===
-export PATH="$HOME/.local/bin:$PATH"
+# =============================================================================
+# Homebrew (inline — avoids `brew shellenv` subprocess at startup)
+# =============================================================================
+for _brew_prefix in /home/linuxbrew/.linuxbrew /opt/homebrew /usr/local; do
+  if [[ -x "$_brew_prefix/bin/brew" ]]; then
+    export HOMEBREW_PREFIX="$_brew_prefix"
+    export HOMEBREW_CELLAR="$_brew_prefix/Cellar"
+    export HOMEBREW_REPOSITORY="$_brew_prefix/Homebrew"
+    fpath=("$_brew_prefix/share/zsh/site-functions" $fpath)
+    path=("$_brew_prefix/bin" "$_brew_prefix/sbin" $path)
+    export INFOPATH="$_brew_prefix/share/info${INFOPATH:+:$INFOPATH}"
+    break
+  fi
+done
+unset _brew_prefix
 
-# === Prompt (Starship) ===
+# =============================================================================
+# Completions (cached: rebuild .zcompdump only if older than 24h)
+# =============================================================================
+autoload -Uz compinit
+() {
+  setopt local_options extended_glob
+  if [[ -n ${ZDOTDIR:-$HOME}/.zcompdump(#qNmh+24) ]]; then
+    compinit
+  else
+    compinit -C
+  fi
+}
+
+# =============================================================================
+# PATH
+# =============================================================================
+typeset -U path
+path=("$HOME/.local/bin" $path)
+
+# WSL: full Windows PATH inherit is off (see /etc/wsl.conf) — re-add only
+# the Windows binaries we actually use, and point the WSL-side Claude CLI
+# at its own personal config dir.
+if grep -qiE "(microsoft|wsl)" /proc/version 2>/dev/null; then
+  for _wp in \
+    "/mnt/c/Users/$USER/AppData/Local/Programs/Microsoft VS Code/bin" \
+    "/mnt/c/Program Files/Microsoft VS Code/bin"; do
+    [[ -d $_wp ]] && path+=("$_wp")
+  done
+  unset _wp
+  export CLAUDE_CONFIG_DIR="$HOME/.claude-personal"
+fi
+
+export PATH
+
+# =============================================================================
+# Prompt — Starship
+# =============================================================================
 eval "$(starship init zsh)"
 
-# === fzf ===
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
-
-# === zoxide with cd override and auto tree view ===
+# =============================================================================
+# Smart cd — zoxide (drop-in replacement for cd)
+# =============================================================================
 eval "$(zoxide init --cmd cd zsh)"
-function chpwd() { eza --tree --level=2 --icons }
+function chpwd() { eza --tree --level=2 --icons --git-ignore }
 
-# === Real-time Suggestions & Syntax Highlighting (optional) ===
-# User: ~/.zsh/... or Arch packages: /usr/share/zsh/plugins/...
-[[ -f ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh ]] && source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
-[[ -f /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]] && source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
-[[ -f ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] && source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-[[ -f /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] && source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+# =============================================================================
+# fzf — cached init (regenerate after fzf upgrade: fzf --zsh > ~/.cache/zsh/fzf-init.zsh)
+# =============================================================================
+[[ -d ~/.fzf/bin ]] && path+=(~/.fzf/bin)
+if (( $+commands[fzf] )); then
+  [[ -f ~/.cache/zsh/fzf-init.zsh ]] || { mkdir -p ~/.cache/zsh; fzf --zsh > ~/.cache/zsh/fzf-init.zsh; }
+  source ~/.cache/zsh/fzf-init.zsh
+fi
 
-# === Terminal window title ===
-set_win_title() {
-  local display_path
-  if [[ $PWD == $HOME* ]]; then
-    display_path="~${PWD#$HOME}"
-  else
-    display_path="$PWD"
+# =============================================================================
+# zsh-autosuggestions (covers Debian/Ubuntu, Arch, manual install)
+# =============================================================================
+for f in \
+  /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh \
+  /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh \
+  ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh; do
+  if [[ -f $f ]]; then
+    source "$f"
+    break
   fi
-  echo -ne "\033]0;${display_path}\007"
+done
+
+# =============================================================================
+# Terminal window title — show current directory
+# =============================================================================
+function set_win_title() {
+  print -Pn "\e]0;${PWD/#$HOME/~}\a"
 }
 precmd_functions+=(set_win_title)
 
-# === Aliases ===
+# =============================================================================
+# Aliases
+# =============================================================================
 
 # Navigation
-alias c="clear"
+alias c='clear'
 alias ..='cd ..'
 alias ...='cd ../..'
-alias repos="cd ~/Repos"
+alias repos='cd ~/Repos'
 alias cdi='cd "$(zoxide query -i)" && eza --tree --level=2 --icons'
+
+# Listing (eza)
 alias ls='eza -h --git --icons --group-directories-first'
-alias ll="eza -lh --git --icons --color=auto --group-directories-first"
-alias la="eza -lha --git --color=auto --group-directories-first"
-alias tree="eza --tree --level=2 --git-ignore --icons"
+alias ll='eza -lh --git --icons --color=auto --group-directories-first'
+alias la='eza -lha --git --color=auto --group-directories-first'
+alias tree='eza --tree --level=2 --git-ignore --icons'
 
-# Git shortcuts
-alias gs="git status"
-alias ga="git add"
-alias gc="git commit"
-alias gp="git push"
-alias gb="git branch"
-alias gd="git diff"
-alias gco="git checkout"
-alias gl="git log --oneline --graph --decorate"
+# Git
+alias gs='git status'
+alias ga='git add'
+alias gc='git commit'
+alias gp='git push'
+alias gb='git branch'
+alias gd='git diff'
+alias gco='git checkout'
+alias gl='git log --oneline --graph --decorate'
 
-# Fix execution flags (for Windows-created files)
-alias fix_exec="find . -type f ! -perm -u=x -exec chmod -x {} +"
+# bat — alias batcat→bat on Debian/Ubuntu; cat stays as cat (no surprises with pager)
+if (( $+commands[batcat] )); then
+  alias bat='batcat'
+  export FZF_DEFAULT_OPTS="--preview '[[ -f {} ]] && batcat --style=numbers --color=always {} | head -100'"
+elif (( $+commands[bat] )); then
+  export FZF_DEFAULT_OPTS="--preview '[[ -f {} ]] && bat --style=numbers --color=always {} | head -100'"
+fi
+if (( $+commands[fdfind] )) && ! (( $+commands[fd] )); then
+  alias fd='fdfind'
+fi
+(( $+commands[rg] )) && alias grep='rg'
 
-alias bat="batcat"
-alias cat='batcat --style=plain'
-export FZF_DEFAULT_OPTS="--preview '[[ -f {} ]] && batcat --style=numbers --color=always {} | head -100'"
+# chezmoi
+alias cma='chezmoi apply'
 
-alias grep='rg'
+# Misc
+alias fix_exec='find . -type f ! -perm -u=x -exec chmod -x {} +'
+
+# =============================================================================
+# Claude Code — perfil work (default é ~/.claude-personal via env var do SO)
+# =============================================================================
+codew() { CLAUDE_CONFIG_DIR="$HOME/.claude-work" command code "$@"; }

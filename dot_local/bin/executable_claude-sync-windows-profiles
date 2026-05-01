@@ -1,0 +1,228 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  claude-sync-windows-profiles [--windows-home /mnt/c/Users/<name>] [--no-credentials]
+
+Copies the safe Claude profile split from WSL/Linux into native Windows profile
+directories for Git Bash usage without mixing session state across operating systems.
+
+Defaults:
+  windows-home = /mnt/c/Users/$USER
+  credentials  = copied
+USAGE
+}
+
+fail() {
+  printf 'error: %s\n' "$*" >&2
+  exit 1
+}
+
+backup_if_changed() {
+  local src="$1"
+  local dst="$2"
+
+  if [[ -f "$dst" ]] && ! cmp -s "$src" "$dst"; then
+    cp -f "$dst" "$dst.backup.$(date +%s)"
+  fi
+}
+
+backup_dir_if_changed() {
+  local src="$1"
+  local dst="$2"
+
+  if [[ -d "$dst" ]] && ! diff -qr "$src" "$dst" >/dev/null 2>&1; then
+    cp -a "$dst" "$dst.backup.$(date +%s)"
+  fi
+}
+
+sync_tree() {
+  local src="$1"
+  local dst="$2"
+
+  [[ -d "$src" ]] || return 0
+
+  if [[ -d "$dst" ]] && diff -qr "$src" "$dst" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  backup_dir_if_changed "$src" "$dst"
+  rm -rf "$dst"
+  mkdir -p "$(dirname "$dst")"
+  cp -a "$src" "$dst"
+}
+
+write_managed_bashrc_block() {
+  local bashrc="$1"
+  local tmp
+  local start="# >>> claude profiles (managed) >>>"
+  local end="# <<< claude profiles (managed) <<<"
+
+  tmp="$(mktemp)"
+
+  if [[ -f "$bashrc" ]]; then
+    awk -v start="$start" -v end="$end" '
+      $0 == start { skip = 1; next }
+      $0 == end { skip = 0; next }
+      !skip { print }
+    ' "$bashrc" >"$tmp"
+  fi
+
+  {
+    cat "$tmp"
+    if [[ -s "$tmp" ]]; then
+      printf '\n'
+    fi
+    cat <<'EOF'
+# >>> claude profiles (managed) >>>
+export PATH="$HOME/.local/bin:$PATH"
+
+claude() {
+  claude-personal "$@"
+}
+# <<< claude profiles (managed) <<<
+EOF
+  } >"$tmp.rendered"
+
+  if [[ -f "$bashrc" ]]; then
+    backup_if_changed "$tmp.rendered" "$bashrc"
+  fi
+
+  mkdir -p "$(dirname "$bashrc")"
+  cp "$tmp.rendered" "$bashrc"
+  rm -f "$tmp" "$tmp.rendered"
+}
+
+render_windows_settings() {
+  local src="$1"
+  local dst="$2"
+  local git_bash_path="$3"
+
+  jq \
+    --arg git_bash_path "$git_bash_path" \
+    '.env = ((.env // {}) + {
+       CLAUDE_CODE_GIT_BASH_PATH: $git_bash_path,
+       CLAUDE_CODE_USE_POWERSHELL_TOOL: "1"
+     }) |
+     .statusLine = {
+       "type": "command",
+       "command": "bash \"$HOME/.local/bin/claude-statusline\""
+     }' \
+    "$src" >"$dst"
+}
+
+helper_path() {
+  local script_dir="$1"
+  local helper="$2"
+
+  if [[ -f "$script_dir/$helper" ]]; then
+    printf '%s\n' "$script_dir/$helper"
+    return 0
+  fi
+
+  if [[ -f "$script_dir/executable_$helper" ]]; then
+    printf '%s\n' "$script_dir/executable_$helper"
+    return 0
+  fi
+
+  fail "helper not found: $helper"
+}
+
+sync_profile() {
+  local profile="$1"
+  local windows_home="$2"
+  local copy_credentials="$3"
+  local git_bash_path="$4"
+  local script_dir="$5"
+  local src_root="$HOME/.claude-$profile"
+  local dst_root="$windows_home/.claude-$profile"
+  local tmp_settings
+
+  [[ -d "$src_root" ]] || fail "source profile not found: $src_root"
+  [[ -f "$src_root/settings.json" ]] || fail "missing settings.json in $src_root"
+
+  mkdir -p "$dst_root"
+
+  tmp_settings="$(mktemp)"
+  render_windows_settings "$src_root/settings.json" "$tmp_settings" "$git_bash_path"
+  backup_if_changed "$tmp_settings" "$dst_root/settings.json"
+  cp "$tmp_settings" "$dst_root/settings.json"
+  rm -f "$tmp_settings"
+
+  if [[ "$copy_credentials" == "1" && -f "$src_root/.credentials.json" ]]; then
+    backup_if_changed "$src_root/.credentials.json" "$dst_root/.credentials.json"
+    cp "$src_root/.credentials.json" "$dst_root/.credentials.json"
+  fi
+
+  sync_tree "$src_root/skills" "$dst_root/skills"
+
+  if [[ -d "$src_root/plugins" ]]; then
+    local plugin_dir
+    while IFS= read -r -d '' plugin_dir; do
+      local plugin_name
+      plugin_name="$(basename "$plugin_dir")"
+      case "$plugin_name" in
+        cache|data|marketplaces)
+          continue
+          ;;
+      esac
+      [[ -f "$plugin_dir/SKILL.md" ]] || continue
+      sync_tree "$plugin_dir" "$dst_root/plugins/$plugin_name"
+    done < <(find "$src_root/plugins" -mindepth 1 -maxdepth 1 -type d -print0)
+  fi
+
+  mkdir -p "$windows_home/.local/bin"
+  for helper in claude-statusline claude-personal claude-work; do
+    local helper_src
+    helper_src="$(helper_path "$script_dir" "$helper")"
+    backup_if_changed "$helper_src" "$windows_home/.local/bin/$helper"
+    install -m 755 "$helper_src" "$windows_home/.local/bin/$helper"
+  done
+}
+
+windows_home="/mnt/c/Users/${USER}"
+copy_credentials="1"
+
+while (($#)); do
+  case "$1" in
+    --windows-home)
+      [[ $# -ge 2 ]] || fail "--windows-home requires a value"
+      windows_home="$2"
+      shift 2
+      ;;
+    --no-credentials)
+      copy_credentials="0"
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      fail "unknown argument: $1"
+      ;;
+  esac
+done
+
+command -v jq >/dev/null 2>&1 || fail "jq is required"
+
+[[ -d "$windows_home" ]] || fail "windows home not found: $windows_home"
+
+git_bash_path='C:\Program Files\Git\bin\bash.exe'
+if [[ ! -e /mnt/c/Program\ Files/Git/bin/bash.exe && -e /mnt/c/Program\ Files/Git/usr/bin/bash.exe ]]; then
+  git_bash_path='C:\Program Files\Git\usr\bin\bash.exe'
+fi
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+sync_profile personal "$windows_home" "$copy_credentials" "$git_bash_path" "$script_dir"
+sync_profile work "$windows_home" "$copy_credentials" "$git_bash_path" "$script_dir"
+write_managed_bashrc_block "$windows_home/.bashrc"
+
+printf 'Windows Claude profiles synced to %s\n' "$windows_home"
+printf 'Profiles: %s, %s\n' "$windows_home/.claude-personal" "$windows_home/.claude-work"
+printf 'Helpers:  %s\n' "$windows_home/.local/bin"
+printf 'Git Bash: %s\n' "$git_bash_path"
+printf '\nNative Windows Claude remains separate from WSL session state.\n'

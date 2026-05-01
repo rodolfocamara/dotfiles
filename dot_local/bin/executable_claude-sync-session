@@ -1,0 +1,325 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  claude-sync-session <session-name-or-id> [repo-path] [--from personal|work] [--to personal|work]
+
+Examples:
+  claude-sync-session main
+  claude-sync-session first ~/Repos/missioncontrol
+  claude-sync-session 4721d402-8eb2-4321-8763-90ca4e946143 ~/Repos/missioncontrol --from personal --to work
+
+Defaults:
+  --from personal
+  --to work
+  repo-path = current git repository root, or current directory if not inside git
+USAGE
+}
+
+fail() {
+  printf 'error: %s\n' "$*" >&2
+  exit 1
+}
+
+profile_dir() {
+  case "$1" in
+    personal) printf '%s/.claude-personal\n' "$HOME" ;;
+    work) printf '%s/.claude-work\n' "$HOME" ;;
+    *) fail "invalid profile '$1' (expected personal or work)" ;;
+  esac
+}
+
+is_uuid() {
+  [[ "$1" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
+}
+
+sanitize_project_dir() {
+  printf '%s' "$1" | sed 's/[^[:alnum:].-]/-/g'
+}
+
+resolve_repo_path() {
+  local repo_arg="${1:-$PWD}"
+
+  [[ -e "$repo_arg" ]] || fail "repo path does not exist: $repo_arg"
+
+  if git -C "$repo_arg" rev-parse --show-toplevel >/dev/null 2>&1; then
+    git -C "$repo_arg" rev-parse --show-toplevel
+  else
+    realpath "$repo_arg"
+  fi
+}
+
+project_dir_has_cwd() {
+  local project_dir="$1"
+  local repo_path="$2"
+  local transcript
+
+  while IFS= read -r -d '' transcript; do
+    if jq -e --arg cwd "$repo_path" 'select(.cwd? == $cwd)' "$transcript" >/dev/null 2>&1; then
+      return 0
+    fi
+  done < <(find "$project_dir" -maxdepth 1 -type f -name '*.jsonl' -print0)
+
+  return 1
+}
+
+resolve_project_dir() {
+  local src_root="$1"
+  local repo_path="$2"
+  local guessed_project_dir
+  local project_dir
+  local matched_project_dir=""
+
+  guessed_project_dir="$(sanitize_project_dir "$repo_path")"
+  if [[ -d "$src_root/projects/$guessed_project_dir" ]]; then
+    printf '%s\n' "$guessed_project_dir"
+    return 0
+  fi
+
+  while IFS= read -r -d '' project_dir; do
+    if project_dir_has_cwd "$project_dir" "$repo_path"; then
+      if [[ -n "$matched_project_dir" && "$matched_project_dir" != "$(basename "$project_dir")" ]]; then
+        fail "multiple Claude project dirs match '$repo_path': '$matched_project_dir' and '$(basename "$project_dir")'"
+      fi
+      matched_project_dir="$(basename "$project_dir")"
+    fi
+  done < <(find "$src_root/projects" -mindepth 1 -maxdepth 1 -type d -print0)
+
+  [[ -n "$matched_project_dir" ]] || fail "no Claude session project dir found for '$repo_path' under $src_root/projects"
+  printf '%s\n' "$matched_project_dir"
+}
+
+session_metadata() {
+  local transcript="$1"
+  local session_key="$2"
+  local key_is_uuid="$3"
+
+  jq -nr \
+    --arg file "$transcript" \
+    --arg session_key "$session_key" \
+    --arg key_is_uuid "$key_is_uuid" \
+    '
+      reduce inputs as $o (
+        {
+          sessionId: "",
+          cwd: "",
+          customTitle: "",
+          agentName: "",
+          firstTimestamp: "",
+          lastTimestamp: ""
+        };
+        .sessionId = (
+          if .sessionId == "" and (($o.sessionId? // "") != "") then $o.sessionId else .sessionId end
+        )
+        | .cwd = (
+          if .cwd == "" and (($o.cwd? // "") != "") then $o.cwd else .cwd end
+        )
+        | .customTitle = (
+          if (($o.customTitle? // "") != "") then $o.customTitle else .customTitle end
+        )
+        | .agentName = (
+          if (($o.agentName? // "") != "") then $o.agentName else .agentName end
+        )
+        | .firstTimestamp = (
+          if .firstTimestamp == "" and (($o.timestamp? // "") != "") then $o.timestamp else .firstTimestamp end
+        )
+        | .lastTimestamp = (
+          if (($o.timestamp? // "") != "") then $o.timestamp else .lastTimestamp end
+        )
+      )
+      | .sessionId = (
+          if .sessionId == "" then ($file | split("/") | .[-1] | sub("\\.jsonl$"; "")) else .sessionId end
+        )
+      | .title = (
+          if .customTitle != "" then .customTitle
+          elif .agentName != "" then .agentName
+          else ""
+          end
+        )
+      | select(
+          ($key_is_uuid == "1" and .sessionId == $session_key)
+          or
+          ($key_is_uuid == "0" and .title == $session_key)
+        )
+      | [.sessionId, .title, .cwd, .firstTimestamp, .lastTimestamp]
+      | @tsv
+    ' "$transcript"
+}
+
+find_session() {
+  local src_root="$1"
+  local project_dir="$2"
+  local session_key="$3"
+  local key_is_uuid="0"
+  local transcript
+  local -a matches=()
+
+  if is_uuid "$session_key"; then
+    key_is_uuid="1"
+  fi
+
+  while IFS= read -r -d '' transcript; do
+    local metadata
+    metadata="$(session_metadata "$transcript" "$session_key" "$key_is_uuid")" || true
+    if [[ -n "$metadata" ]]; then
+      matches+=("$metadata")
+    fi
+  done < <(find "$src_root/projects/$project_dir" -maxdepth 1 -type f -name '*.jsonl' -print0)
+
+  if (( ${#matches[@]} == 0 )); then
+    fail "no session '$session_key' found in $src_root/projects/$project_dir"
+  fi
+
+  if (( ${#matches[@]} > 1 )); then
+    printf 'Found multiple sessions named %s in %s:\n' "$session_key" "$project_dir" >&2
+    printf 'sessionId\ttitle\tcwd\tfirstTimestamp\tlastTimestamp\n' >&2
+    printf '%s\n' "${matches[@]}" >&2
+    fail "use a session UUID instead of '$session_key'"
+  fi
+
+  printf '%s\n' "${matches[0]}"
+}
+
+path_is_in_sync() {
+  local src_path="$1"
+  local dst_path="$2"
+
+  if [[ -f "$src_path" && -f "$dst_path" ]]; then
+    cmp -s "$src_path" "$dst_path"
+    return
+  fi
+
+  if [[ -d "$src_path" && -d "$dst_path" ]]; then
+    diff -qr "$src_path" "$dst_path" >/dev/null
+    return
+  fi
+
+  return 1
+}
+
+copy_path() {
+  local src_path="$1"
+  local dst_path="$2"
+  local label="$3"
+
+  [[ -e "$src_path" ]] || return 0
+
+  if [[ -e "$dst_path" ]]; then
+    if path_is_in_sync "$src_path" "$dst_path"; then
+      printf 'Already in sync: %s\n' "$label"
+      return 0
+    fi
+
+    fail "$label already exists at $dst_path and differs from source"
+  fi
+
+  mkdir -p "$(dirname "$dst_path")"
+  cp -a "$src_path" "$dst_path"
+  printf 'Copied: %s\n' "$label"
+}
+
+from_profile="personal"
+to_profile="work"
+session_key=""
+repo_arg=""
+
+while (($#)); do
+  case "$1" in
+    --from)
+      [[ $# -ge 2 ]] || fail "--from requires a value"
+      from_profile="$2"
+      shift 2
+      ;;
+    --to)
+      [[ $# -ge 2 ]] || fail "--to requires a value"
+      to_profile="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      fail "unknown option: $1"
+      ;;
+    *)
+      if [[ -z "$session_key" ]]; then
+        session_key="$1"
+      elif [[ -z "$repo_arg" ]]; then
+        repo_arg="$1"
+      else
+        fail "unexpected extra argument: $1"
+      fi
+      shift
+      ;;
+  esac
+done
+
+if (($#)); then
+  if [[ -z "$session_key" ]]; then
+    session_key="$1"
+    shift
+  fi
+  if (($#)); then
+    if [[ -z "$repo_arg" ]]; then
+      repo_arg="$1"
+      shift
+    fi
+  fi
+  (($# == 0)) || fail "unexpected extra argument: $1"
+fi
+
+[[ -n "$session_key" ]] || {
+  usage >&2
+  exit 1
+}
+
+command -v jq >/dev/null 2>&1 || fail "jq is required"
+command -v realpath >/dev/null 2>&1 || fail "realpath is required"
+command -v find >/dev/null 2>&1 || fail "find is required"
+
+[[ "$from_profile" != "$to_profile" ]] || fail "--from and --to must be different"
+
+src_root="$(profile_dir "$from_profile")"
+dst_root="$(profile_dir "$to_profile")"
+
+[[ -d "$src_root/projects" ]] || fail "source profile has no projects dir: $src_root/projects"
+mkdir -p "$dst_root/projects"
+
+repo_path="$(resolve_repo_path "$repo_arg")"
+project_dir="$(resolve_project_dir "$src_root" "$repo_path")"
+
+session_row="$(find_session "$src_root" "$project_dir" "$session_key")"
+IFS=$'\t' read -r session_id session_title session_cwd first_timestamp last_timestamp <<<"$session_row"
+
+copy_path \
+  "$src_root/projects/$project_dir/$session_id.jsonl" \
+  "$dst_root/projects/$project_dir/$session_id.jsonl" \
+  "transcript"
+
+copy_path \
+  "$src_root/projects/$project_dir/$session_id" \
+  "$dst_root/projects/$project_dir/$session_id" \
+  "subagents"
+
+for support_dir in file-history session-env tasks image-cache; do
+  copy_path \
+    "$src_root/$support_dir/$session_id" \
+    "$dst_root/$support_dir/$session_id" \
+    "$support_dir"
+done
+
+printf 'Copied session %s (%s)\n' "$session_id" "${session_title:-unnamed}"
+printf 'From %s:%s\n' "$from_profile" "$project_dir"
+printf 'To   %s:%s\n' "$to_profile" "$project_dir"
+printf 'CWD  %s\n' "${session_cwd:-$repo_path}"
+printf 'Time %s -> %s\n' "${first_timestamp:-?}" "${last_timestamp:-?}"
+printf '\nResume with:\n'
+printf '  cd %q\n' "${session_cwd:-$repo_path}"
+printf '  claude-%s --resume %q\n' "$to_profile" "$session_id"
