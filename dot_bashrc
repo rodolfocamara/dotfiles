@@ -8,10 +8,9 @@ case $- in
       *) return;;
 esac
 
-# ble.sh — fish-like autosuggestions, syntax highlight, completions for bash.
-# Mainly used on Git Bash (Windows); zsh covers WSL. Install: see README.md.
-# Must be sourced near the top with --noattach; ble-attach is called at the end.
-[[ -f ~/.local/share/blesh/ble.sh ]] && source ~/.local/share/blesh/ble.sh --noattach
+# Git Bash on Windows leaves $USER/$LANG empty — keep them populated.
+[[ -z "$USER" ]] && export USER="${USERNAME:-$(id -un 2>/dev/null)}"
+[[ -z "$LANG" ]] && export LANG="C.UTF-8"
 
 # don't put duplicate lines or lines starting with space in the history.
 # See bash(1) for more options
@@ -120,7 +119,7 @@ if ! shopt -oq posix; then
     . /etc/bash_completion
   fi
 fi
-. "$HOME/.cargo/env"
+[ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
 
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash
 
@@ -128,13 +127,17 @@ fi
 [ -f "$HOME/.deno/env" ] && . "$HOME/.deno/env"
 [ -d "$HOME/.duckdb/cli/latest" ] && export PATH="$HOME/.duckdb/cli/latest:$PATH"
 [ -d "$HOME/bin" ] && export PATH="$HOME/bin:$PATH"
+[ -d "$HOME/.local/bin" ] && export PATH="$HOME/.local/bin:$PATH"
 _oci_ac="$HOME/lib/oracle-cli/lib/python3.13/site-packages/oci_cli/bin/oci_autocomplete.sh"
 [ -f "$_oci_ac" ] && . "$_oci_ac"
 unset _oci_ac
 
+# Claude Code — perfil pessoal por padrão; `codew`/`claude-work` para a conta de trabalho.
+export CLAUDE_CONFIG_DIR="$HOME/.claude-personal"
+codew() { CLAUDE_CONFIG_DIR="$HOME/.claude-work" command code "$@"; }
+
 # WSL: full Windows PATH inherit is off (see /etc/wsl.conf) — re-add only
-# the Windows binaries we actually use, and point the WSL-side Claude CLI
-# at its own personal config dir.
+# the Windows binaries we actually use.
 if grep -qiE "(microsoft|wsl)" /proc/version 2>/dev/null; then
   for _wp in \
     "/mnt/c/Users/$USER/AppData/Local/Programs/Microsoft VS Code/bin" \
@@ -142,11 +145,7 @@ if grep -qiE "(microsoft|wsl)" /proc/version 2>/dev/null; then
     [ -d "$_wp" ] && PATH="$PATH:$_wp"
   done
   unset _wp
-  export CLAUDE_CONFIG_DIR="$HOME/.claude-personal"
 fi
 
-# Claude Code — perfil work (default é ~/.claude-personal via env var do SO)
-codew() { CLAUDE_CONFIG_DIR="$HOME/.claude-work" command code "$@"; }
-
-# ble.sh — attach (must be last). No-op if ble.sh wasn't sourced above.
-[[ ${BLE_VERSION-} ]] && ble-attach
+# Starship prompt (must be last so nothing later overrides PS1).
+command -v starship >/dev/null 2>&1 && eval "$(starship init bash)"
