@@ -24,6 +24,11 @@ apps/
 scripts/install-packages.windows.ps1
 {{ end }}
 
+# Ignore Linux /etc/ targets on Windows (no /etc, no age key)
+{{ if eq .chezmoi.os "windows" }}
+etc/
+{{ end }}
+
 # Reject plaintext OpenVPN client config (only encrypted_client.conf.age is allowed)
 etc/openvpn/client/client.conf
 # Keep dir in git but do not apply .gitkeep to /etc
