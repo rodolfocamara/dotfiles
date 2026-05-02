@@ -5,6 +5,7 @@
 # Claude Code runtime/local
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+.claude/worktrees/
 
 # Playwright MCP session logs
 /.playwright-mcp/
