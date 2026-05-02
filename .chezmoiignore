@@ -24,9 +24,29 @@ apps/
 scripts/install-packages.windows.ps1
 {{ end }}
 
-# Ignore Linux /etc/ targets on Windows (no /etc, no age key)
+# Ignore Linux-only targets on Windows. No /etc, no age key, and the
+# desktop/shell configs (Hyprland, Waybar, Wofi, Kitty, direnv, zsh)
+# have no meaningful Windows target. zsh runs inside WSL, which chezmoi
+# sees as Linux.
 {{ if eq .chezmoi.os "windows" }}
 etc/
+.config/hypr/
+.config/waybar/
+.config/wofi/
+.config/kitty/
+.config/direnv/
+.envrc
+.zshenv
+.zshrc
+# apps/* on Windows is wired up via mappings in chezmoi.toml.tmpl;
+# the active ~/.config/chezmoi/chezmoi.toml is intentionally minimal,
+# so the mappings are inactive and chezmoi would otherwise try to
+# create ~/apps/. Skip it here until/unless the toml is restored.
+apps/
+# Linux-only run-after script (chmods /etc/openvpn/client/); no-op on
+# Windows but would still appear in `chezmoi status` on every apply.
+# .chezmoiignore matches the target name (without the run_after_ prefix).
+openvpn_client_permissions.sh
 {{ end }}
 
 # Reject plaintext OpenVPN client config (only encrypted_client.conf.age is allowed)
