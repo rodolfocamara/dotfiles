@@ -40,6 +40,7 @@ autoload -Uz compinit
 # =============================================================================
 typeset -U path
 path=("$HOME/.local/bin" $path)
+[[ -d "$HOME/.cargo/bin" ]] && path=("$HOME/.cargo/bin" $path)
 
 # WSL: full Windows PATH inherit is off (see /etc/wsl.conf) — re-add only
 # the Windows binaries we actually use, and point the WSL-side Claude CLI
@@ -65,7 +66,6 @@ eval "$(starship init zsh)"
 # Smart cd — zoxide (drop-in replacement for cd)
 # =============================================================================
 eval "$(zoxide init --cmd cd zsh)"
-function chpwd() { eza --tree --level=2 --icons --git-ignore }
 
 # =============================================================================
 # fzf — cached init (regenerate after fzf upgrade: fzf --zsh > ~/.cache/zsh/fzf-init.zsh)
@@ -146,3 +146,28 @@ alias fix_exec='find . -type f ! -perm -u=x -exec chmod -x {} +'
 # Claude Code — perfil work (default é ~/.claude-personal via env var do SO)
 # =============================================================================
 codew() { CLAUDE_CONFIG_DIR="$HOME/.claude-work" command code "$@"; }
+
+# =============================================================================
+# Atualização do sistema — apt + snap + rustup + cargo + fzf
+# =============================================================================
+update-all() {
+  echo "==> apt"
+  sudo apt update && sudo apt full-upgrade -y --fix-missing && sudo apt autoremove -y && sudo apt autoclean
+  echo "==> snap"
+  sudo snap refresh
+  if (( $+commands[rustup] )); then
+    echo "==> rustup"
+    rustup update
+  fi
+  if (( $+commands[cargo-install-update] )); then
+    echo "==> cargo packages"
+    cargo install-update -a
+  else
+    echo "==> cargo packages: pulando (rode 'cargo install cargo-update' uma vez pra habilitar)"
+  fi
+  if [[ -d ~/.fzf/.git ]]; then
+    echo "==> fzf"
+    (cd ~/.fzf && git pull --ff-only && ./install --bin)
+  fi
+  echo "==> done"
+}
