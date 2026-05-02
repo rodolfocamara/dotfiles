@@ -7,9 +7,10 @@ packages/
 scripts/
 home/
 
-# Ignore apps/ on Linux (only Windows uses PowerShell/Terminal mappings)
+# Ignore Windows-only directories on Linux/macOS.
 {{ if ne .chezmoi.os "windows" }}
 apps/
+Documents/
 {{ end }}
 
 # Ignore Linux-specific scripts on Windows
@@ -38,11 +39,9 @@ etc/
 .envrc
 .zshenv
 .zshrc
-# apps/* on Windows is wired up via mappings in chezmoi.toml.tmpl;
-# the active ~/.config/chezmoi/chezmoi.toml is intentionally minimal,
-# so the mappings are inactive and chezmoi would otherwise try to
-# create ~/apps/. Skip it here until/unless the toml is restored.
-apps/
+# apps/windows_terminal/ has no active chezmoi mapping (Windows Terminal
+# settings are managed by run_once scripts, not chezmoi targets).
+apps/windows_terminal/
 # Linux-only run-after script (chmods /etc/openvpn/client/); no-op on
 # Windows but would still appear in `chezmoi status` on every apply.
 # .chezmoiignore matches the target name (without the run_after_ prefix).
