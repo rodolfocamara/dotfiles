@@ -14,17 +14,11 @@ identity = "{{ or (index .chezmoi "configDir") .chezmoi.homeDir }}/.config/chezm
 # recipient = "age1xxxxxxxx..."
 
 # --- Windows Specific Mappings ---
-{{ if eq .chezmoi.os "windows" -}}
-
-# Map PowerShell Profile from apps/ directory
-# Target path is relative to the user's home directory
-[ "Documents/PowerShell/Microsoft.PowerShell_profile.ps1" ]
-    source = "apps/powershell/Microsoft.PowerShell_profile.ps1"
-    type = "file" # Can be file or template
-
-# Windows Terminal mapping removed - handled by run_once script
-
-{{ end -}}
+# chezmoi v2 does not support arbitrary [ "<target>" ] source = ... blocks
+# in its config file. Targets are determined by source path layout: the
+# PowerShell profile lives at Documents/PowerShell/Microsoft.PowerShell_profile.ps1
+# in the source tree and chezmoi maps it to ~/Documents/PowerShell/...
+# automatically. Windows Terminal settings are handled by run_once scripts.
 
 # --- OS-Specific Script Mappings ---
 # These scripts will be automatically selected based on OS detection
