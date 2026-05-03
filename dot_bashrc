@@ -67,10 +67,16 @@ else
 fi
 unset color_prompt force_color_prompt
 
-# If this is an xterm set the title to user@host:dir
+# Terminal window title — only on cd, so apps (Claude Code, vim, ssh) keep theirs
 case "$TERM" in
 xterm*|rxvt*)
-    PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
+    __set_win_title() {
+        if [[ "$PWD" != "${__last_title_pwd-}" ]]; then
+            printf '\e]0;%s\a' "${debian_chroot:+($debian_chroot)}${PWD/#$HOME/\~}"
+            __last_title_pwd="$PWD"
+        fi
+    }
+    PROMPT_COMMAND="__set_win_title${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
     ;;
 *)
     ;;

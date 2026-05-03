@@ -91,11 +91,13 @@ done
 
 # =============================================================================
 # Terminal window title — show current directory
+# Only on cd (chpwd) + once at startup, so apps (Claude Code, vim, ssh) keep theirs
 # =============================================================================
 function set_win_title() {
   print -Pn "\e]0;${PWD/#$HOME/~}\a"
 }
-precmd_functions+=(set_win_title)
+chpwd_functions+=(set_win_title)
+set_win_title
 
 # =============================================================================
 # Aliases

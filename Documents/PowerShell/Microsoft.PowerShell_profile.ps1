@@ -34,17 +34,16 @@ function tree { eza --tree --icons --group-directories-first --level=2 @args }
 Set-Alias grep Select-String
 
 # ── Terminal title (cached admin check) ─────────────────────────
-$_isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+$global:_isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
-# ── Starship prompt + title wrapper (cached init) ───────────────
+# ── Starship prompt (cached init) ───────────────────────────────
 _CacheInitScript -Name 'starship' -Exe 'starship' -Generator { & starship init powershell }
-$_starshipPrompt = $function:prompt
 
-function prompt {
-    $prefix = if ($_isAdmin) { "🛡️ " } else { "" }
-    $host.UI.RawUI.WindowTitle = "$prefix$($PWD.Path.Replace($HOME, '~'))"
-    & $_starshipPrompt
-}
+# Update title only when shell is idle, so apps (Claude Code, vim, ssh) keep theirs
+Register-EngineEvent PowerShell.OnIdle -Action {
+    $prefix = if ($global:_isAdmin) { "🛡️ " } else { "" }
+    [Console]::Title = "$prefix$($PWD.Path.Replace($HOME, '~'))"
+} | Out-Null
 
 # ── k9s completion (cached) ─────────────────────────────────────
 _CacheInitScript -Name 'k9s' -Exe 'k9s' -Generator { k9s completion powershell }
