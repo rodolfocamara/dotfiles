@@ -49,6 +49,7 @@ Register-EngineEvent PowerShell.OnIdle -Action {
 _CacheInitScript -Name 'k9s' -Exe 'k9s' -Generator { k9s completion powershell }
 
 # ── Zoxide (cached init) ────────────────────────────────────────
+$env:_ZO_DOCTOR = "0"
 _CacheInitScript -Name 'zoxide' -Exe 'zoxide' -Generator { zoxide init powershell }
 
 # ── Useful shortcuts ────────────────────────────────────────────
