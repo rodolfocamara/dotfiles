@@ -1,0 +1,13 @@
+[user]
+	name = {{ .workGit.name }}
+	email = {{ .workGit.email }}
+{{ if ne .chezmoi.os "windows" }}
+[credential]
+	helper = manager
+	helper =
+	helper = /usr/local/bin/git-credential-manager
+	azreposCredentialType = oauth
+[credential "https://dev.azure.com"]
+	useHttpPath = true
+[credential "azrepos:org/work-bra"]
+{{ end }}
