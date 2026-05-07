@@ -51,4 +51,9 @@ openvpn_client_permissions.sh
 # Reject plaintext OpenVPN client config (only encrypted_client.conf.age is allowed)
 etc/openvpn/client/client.conf
 # Keep dir in git but do not apply .gitkeep to /etc
-etc/openvpn/client/.gitkeep 
+etc/openvpn/client/.gitkeep
+
+# Skip the OpenVPN client perms script on WSL (no native /etc/openvpn use there).
+{{ if and (ne .chezmoi.os "windows") (contains "microsoft" (lower (or .chezmoi.kernel.osrelease ""))) }}
+openvpn_client_permissions.sh
+{{ end }}
