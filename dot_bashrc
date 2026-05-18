@@ -131,6 +131,9 @@ fi
 
 # Tool installer hooks (added by their installers; consolidated here)
 [ -f "$HOME/.deno/env" ] && . "$HOME/.deno/env"
+# nvm — Node Version Manager; loads before $PATH lookups for node
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 [ -d "$HOME/.duckdb/cli/latest" ] && export PATH="$HOME/.duckdb/cli/latest:$PATH"
 [ -d "$HOME/bin" ] && export PATH="$HOME/bin:$PATH"
 [ -d "$HOME/.local/bin" ] && export PATH="$HOME/.local/bin:$PATH"
