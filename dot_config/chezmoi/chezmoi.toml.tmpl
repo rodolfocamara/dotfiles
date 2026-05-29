@@ -77,7 +77,7 @@ identity = "{{ or (index .chezmoi "configDir") .chezmoi.homeDir }}/.config/chezm
 {{ end -}}
 
 # --- Targets para /etc (apply com: sudo chezmoi apply -v) ---
-[ "etc/openvpn/scripts/executable_dns-up.sh" ]
+[ "etc/openvpn/scripts/executable_dns-up.sh.tmpl" ]
   target = "/etc/openvpn/scripts/dns-up.sh"
 [ "etc/openvpn/scripts/executable_dns-down.sh" ]
   target = "/etc/openvpn/scripts/dns-down.sh"

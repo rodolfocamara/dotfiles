@@ -5,6 +5,9 @@
 set -euo pipefail
 
 IFACE="${dev:-${1:-tun0}}"
+{{- $workVpn := (index . "workVpn") | default dict }}
+{{- $splitDnsDomains := (index $workVpn "splitDnsDomains") | default list }}
+EXTRA_DOMAINS=({{ range $splitDnsDomains }} "~{{ . }}"{{ end }})
 
 DNS=()
 DOMAIN=""
@@ -27,9 +30,11 @@ if ((${#DNS[@]})); then
   resolvectl dns "$IFACE" "${DNS[@]}" || true
 fi
 
-# Split DNS: only route pushed domain + work.example.invalid via VPN
+# Split DNS: only route pushed and locally configured domains via VPN
 if [[ -n "${DOMAIN}" ]]; then
-  resolvectl domain "$IFACE" "~${DOMAIN}" "~work.example.invalid" || true
+  resolvectl domain "$IFACE" "~${DOMAIN}" "${EXTRA_DOMAINS[@]}" || true
+elif ((${#EXTRA_DOMAINS[@]})); then
+  resolvectl domain "$IFACE" "${EXTRA_DOMAINS[@]}" || true
 fi
 
 resolvectl default-route "$IFACE" no || true
