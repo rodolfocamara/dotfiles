@@ -9,5 +9,9 @@
 	helper = cache
 [core]
 	editor = code --wait
-[includeIf "gitdir:~/Repos/work/"]
+{{- $workGit := (index . "workGit") | default dict -}}
+{{- $workDir := (index $workGit "dir") | default "" -}}
+{{- if $workDir }}
+[includeIf "gitdir:{{ $workDir }}"]
 	path = ~/.gitconfig-work
+{{- end }}
