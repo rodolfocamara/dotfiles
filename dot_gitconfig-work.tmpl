@@ -1,6 +1,11 @@
+{{- $workGit := (index . "workGit") | default dict -}}
+{{- $workName := (index $workGit "name") | default "" -}}
+{{- $workEmail := (index $workGit "email") | default "" -}}
+{{- if and $workName $workEmail -}}
 [user]
-	name = {{ .workGit.name }}
-	email = {{ .workGit.email }}
+	name = {{ $workName }}
+	email = {{ $workEmail }}
+{{- end }}
 {{ if ne .chezmoi.os "windows" }}
 [credential]
 	helper = manager
