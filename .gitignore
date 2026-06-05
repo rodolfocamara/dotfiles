@@ -9,3 +9,8 @@
 
 # Playwright MCP session logs
 /.playwright-mcp/
+
+# Stray runtime junk
+debug.log
+__pycache__/
+*.pyc
