@@ -15,14 +15,16 @@ function _CacheInitScript {
 }
 
 # ── PSReadLine (built-in since PS 5.1, skip Get-Module scan) ───
-Set-PSReadLineOption -PredictionSource HistoryAndPlugin
-Set-PSReadLineOption -PredictionViewStyle ListView
-Set-PSReadLineOption -EditMode Windows
-Set-PSReadLineOption -HistorySearchCursorMovesToEnd
-Set-PSReadLineKeyHandler -Key UpArrow   -Function HistorySearchBackward
-Set-PSReadLineKeyHandler -Key DownArrow -Function HistorySearchForward
-Set-PSReadLineKeyHandler -Key Tab       -Function MenuComplete
-Set-PSReadLineKeyHandler -Chord 'Ctrl+d' -Function DeleteCharOrExit
+if ($Host.Name -eq 'ConsoleHost' -and [Environment]::UserInteractive -and -not [Console]::IsOutputRedirected) {
+    Set-PSReadLineOption -PredictionSource HistoryAndPlugin
+    Set-PSReadLineOption -PredictionViewStyle ListView
+    Set-PSReadLineOption -EditMode Windows
+    Set-PSReadLineOption -HistorySearchCursorMovesToEnd
+    Set-PSReadLineKeyHandler -Key UpArrow   -Function HistorySearchBackward
+    Set-PSReadLineKeyHandler -Key DownArrow -Function HistorySearchForward
+    Set-PSReadLineKeyHandler -Key Tab       -Function MenuComplete
+    Set-PSReadLineKeyHandler -Chord 'Ctrl+d' -Function DeleteCharOrExit
+}
 
 # ── Aliases (eza) ───────────────────────────────────────────────
 if (Test-Path Alias:ls) { Remove-Item Alias:ls -Force -ErrorAction SilentlyContinue }
