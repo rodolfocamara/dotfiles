@@ -53,6 +53,14 @@ if grep -qiE "(microsoft|wsl)" /proc/version 2>/dev/null; then
   done
   unset _wp
   export CLAUDE_CONFIG_DIR="$HOME/.claude-personal"
+
+  # Agrega kubeconfigs do .kube do Windows + o config local do Linux (k3d/rancher)
+  # → troque de cluster com :ctx no k9s
+  _kube_files=()
+  [[ -d /mnt/c/Users/$USER/.kube ]] && _kube_files=(/mnt/c/Users/$USER/.kube/*(.N))  # .N = só arquivos regulares, ignora cache/
+  [[ -f $HOME/.kube/config ]] && _kube_files+=("$HOME/.kube/config")
+  (( ${#_kube_files} )) && export KUBECONFIG="${(j.:.)_kube_files}"
+  unset _kube_files
 fi
 
 export PATH
