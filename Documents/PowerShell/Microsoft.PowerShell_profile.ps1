@@ -58,7 +58,32 @@ function which { param([string]$cmd) Get-Command $cmd -ErrorAction SilentlyConti
 
 Set-Alias winget "$env:LOCALAPPDATA\Microsoft\WindowsApps\winget.exe"
 
-# ── Claude Code — perfil work (default é ~/.claude-personal via env var do SO)
+# ── Claude Code profiles ────────────────────────────────────────
+$_localBin = Join-Path $env:USERPROFILE '.local\bin'
+if ((Test-Path $_localBin) -and (($env:Path -split ';') -notcontains $_localBin)) {
+    $env:Path = "$_localBin;$env:Path"
+}
+
+$_claudeExe = Join-Path $_localBin 'claude.exe'
+if (-not (Test-Path $_claudeExe)) {
+    $_claudeExe = (Get-Command -CommandType Application claude.exe -ErrorAction SilentlyContinue |
+                   Select-Object -First 1 -ExpandProperty Source)
+}
+if ($_claudeExe) {
+    function _InvokeClaudeProfile {
+        param([string]$ConfigDir)
+
+        $prev = $env:CLAUDE_CONFIG_DIR
+        $env:CLAUDE_CONFIG_DIR = $ConfigDir
+        try { & $_claudeExe --dangerously-skip-permissions @args } finally { $env:CLAUDE_CONFIG_DIR = $prev }
+    }
+
+    function claude-personal { _InvokeClaudeProfile "$env:USERPROFILE\.claude-personal" @args }
+    function claude-work { _InvokeClaudeProfile "$env:USERPROFILE\.claude-work" @args }
+    function claude { claude-personal @args }
+}
+
+# ── VS Code — perfil work (default é ~/.claude-personal via env var do SO)
 $_codeExe = (Get-Command -CommandType Application code -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source)
 if ($_codeExe) {
     function codew {

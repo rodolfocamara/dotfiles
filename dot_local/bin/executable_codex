@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+#
+# Stable wrapper for `codex` CLI (OpenAI)
+#
+# This exists because nvm does not play well with NPM_CONFIG_PREFIX,
+# so we pin codex to one specific node version and always invoke it from there.
+#
+# Usage:
+#   - First time setup (pick one version you don't change often):
+#       nvm install 24.16.0
+#       nvm use 24.16.0
+#       npm install -g @openai/codex
+#
+#   - Later you can override the node version for codex:
+#       CODEX_NODE_VERSION=v22.22.2 codex ...
+#
+set -euo pipefail
+
+NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+
+# Default pinned version for codex (change this if you want another "home" for it)
+: "${CODEX_NODE_VERSION:=v24.16.0}"
+
+if [[ ! -d "$NVM_DIR" ]]; then
+  echo "codex wrapper: NVM not found at $NVM_DIR" >&2
+  exit 127
+fi
+
+# Source nvm (quietly) so we have access to version paths
+# We use --no-use to avoid changing the current shell's node version.
+if [[ -s "$NVM_DIR/nvm.sh" ]]; then
+  export NVM_DIR
+  # shellcheck disable=SC1090
+  \. "$NVM_DIR/nvm.sh" --no-use 2>/dev/null || true
+fi
+
+CODEX_BIN="$NVM_DIR/versions/node/$CODEX_NODE_VERSION/bin/codex"
+
+if [[ -x "$CODEX_BIN" ]]; then
+  exec "$CODEX_BIN" "$@"
+fi
+
+# Fallback: try whatever nvm thinks is "current" right now (in case user just installed it)
+CURRENT="$("$NVM_DIR/nvm.sh" exec --silent "$CODEX_NODE_VERSION" node -e 'console.log("ok")' 2>/dev/null && echo "$CODEX_NODE_VERSION" || true)"
+if [[ -n "$CURRENT" && -x "$NVM_DIR/versions/node/$CURRENT/bin/codex" ]]; then
+  exec "$NVM_DIR/versions/node/$CURRENT/bin/codex" "$@"
+fi
+
+echo "codex: not installed for node version $CODEX_NODE_VERSION" >&2
+echo "Fix with:" >&2
+echo "  nvm install $CODEX_NODE_VERSION" >&2
+echo "  nvm use $CODEX_NODE_VERSION" >&2
+echo "  npm install -g @openai/codex" >&2
+echo "" >&2
+echo "Or temporarily use another version:" >&2
+echo "  CODEX_NODE_VERSION=v22.22.2 codex ..." >&2
+exit 127

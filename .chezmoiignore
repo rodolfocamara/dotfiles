@@ -23,6 +23,8 @@ Documents/
 {{ if ne .chezmoi.os "windows" }}
 .chezmoiscripts/**/*.ps1.tmpl
 scripts/install-packages.windows.ps1
+# Windows-only codex shim (.cmd); the bash wrapper handles WSL/Linux.
+.local/bin/codex.cmd
 {{ end }}
 
 # Ignore Linux-only targets on Windows. No /etc, no age key, and the
@@ -46,6 +48,8 @@ apps/windows_terminal/
 # Windows but would still appear in `chezmoi status` on every apply.
 # .chezmoiignore matches the target name (without the run_after_ prefix).
 openvpn_client_permissions.sh
+# The codex bash wrapper is WSL/Linux-only; Windows uses codex.cmd instead.
+.local/bin/codex
 {{ end }}
 
 # Reject plaintext OpenVPN client config (only encrypted_client.conf.age is allowed)

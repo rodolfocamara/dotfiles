@@ -134,9 +134,12 @@ fi
 # nvm — Node Version Manager; loads before $PATH lookups for node
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# Re-prefer ~/.local/bin after nvm (wrappers like codex must win)
+[ -d "$HOME/.local/bin" ] && export PATH="$HOME/.local/bin:$PATH"
+
 [ -d "$HOME/.duckdb/cli/latest" ] && export PATH="$HOME/.duckdb/cli/latest:$PATH"
 [ -d "$HOME/bin" ] && export PATH="$HOME/bin:$PATH"
-[ -d "$HOME/.local/bin" ] && export PATH="$HOME/.local/bin:$PATH"
 _oci_ac="$HOME/lib/oracle-cli/lib/python3.13/site-packages/oci_cli/bin/oci_autocomplete.sh"
 [ -f "$_oci_ac" ] && . "$_oci_ac"
 unset _oci_ac
