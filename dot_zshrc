@@ -63,6 +63,10 @@ export PATH
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
+# Re-prefer ~/.local/bin after nvm sources (so our wrappers like codex,
+# claude-statusline etc. always win over nvm-installed global CLIs)
+path=("$HOME/.local/bin" $path)
+
 # =============================================================================
 # Prompt — Starship
 # =============================================================================
