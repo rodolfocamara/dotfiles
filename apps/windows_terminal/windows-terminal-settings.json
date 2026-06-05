@@ -32,9 +32,9 @@
             "command":
             {
                 "action": "sendInput",
-                "input": "\n"
+                "input": "\u001b\r"
             },
-            "id": "User.SendLF"
+            "id": "User.SendShiftEnter"
         },
         {
             "command": "closeTab",
@@ -132,7 +132,7 @@
             "keys": "ctrl+v"
         },
         {
-            "id": "User.SendLF",
+            "id": "User.SendShiftEnter",
             "keys": "shift+enter"
         },
         {
