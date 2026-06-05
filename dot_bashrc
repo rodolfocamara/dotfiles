@@ -157,6 +157,17 @@ if grep -qiE "(microsoft|wsl)" /proc/version 2>/dev/null; then
     [ -d "$_wp" ] && PATH="$PATH:$_wp"
   done
   unset _wp
+
+  # Agrega kubeconfigs do .kube do Windows + o config local do Linux (k3d/rancher) → :ctx no k9s
+  _kube_files=""
+  if [ -d "/mnt/c/Users/$USER/.kube" ]; then
+    for _kf in "/mnt/c/Users/$USER/.kube"/*; do
+      [ -f "$_kf" ] && _kube_files="${_kube_files:+$_kube_files:}$_kf"
+    done
+  fi
+  [ -f "$HOME/.kube/config" ] && _kube_files="${_kube_files:+$_kube_files:}$HOME/.kube/config"
+  [ -n "$_kube_files" ] && export KUBECONFIG="$_kube_files"
+  unset _kube_files _kf
 fi
 
 # Starship prompt (must be last so nothing later overrides PS1).
