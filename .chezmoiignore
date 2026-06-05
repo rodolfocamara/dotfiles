@@ -44,6 +44,9 @@ etc/
 # apps/windows_terminal/ has no active chezmoi mapping (Windows Terminal
 # settings are managed by run_once scripts, not chezmoi targets).
 apps/windows_terminal/
+# apps/windhawk/ is source-only staging compiled/installed via
+# sync-headset-widget.ps1, not a chezmoi target.
+apps/windhawk/
 # Linux-only run-after script (chmods /etc/openvpn/client/); no-op on
 # Windows but would still appear in `chezmoi status` on every apply.
 # .chezmoiignore matches the target name (without the run_after_ prefix).
