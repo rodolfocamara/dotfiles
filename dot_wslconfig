@@ -1,0 +1,8 @@
+[wsl2]
+vmIdleTimeout=-1
+memory=32GB
+networkingMode=mirrored
+
+[experimental]
+sparseVhd=true
+autoMemoryReclaim=disabled  # gradual causava micro-freezes de ~5s na VM (gravacoes do egress mudas no meio) - 2026-06-10
