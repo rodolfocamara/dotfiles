@@ -19,7 +19,7 @@ Source dir is set to this clone — no duplication.
 # Debian:   sudo apt install chezmoi -y
 
 # 2. Clone the repo where you want it
-git clone https://github.com/r-camara/dotfiles ~/Repos/dotfiles
+git clone https://github.com/rodolfocamara/dotfiles ~/Repos/dotfiles
 
 # 3. Point chezmoi at this clone
 mkdir -p ~/.config/chezmoi
