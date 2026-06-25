@@ -1,7 +1,7 @@
 # Requires -Version 5.1
 <#
 .SYNOPSIS
-Applies Windows system tweaks and installs window-management utilities (AltSnap, AHK).
+Applies Windows system tweaks and installs window-management utilities (AHK).
 Run after a fresh install or when restoring dotfiles.
 #>
 
@@ -34,33 +34,9 @@ if ($settings -and $settings.Length -gt 8) {
     Write-Host "  [OK] Taskbar set to auto-hide"
 }
 
-# ── AltSnap (Alt+drag to move/resize windows; not in winget) ─────
-$altSnapDir = "$env:LOCALAPPDATA\AltSnap"
-$altSnapExe = Join-Path $altSnapDir "AltSnap.exe"
-if (-not (Test-Path $altSnapExe)) {
-    $rel = Invoke-RestMethod "https://api.github.com/repos/RamonUnch/AltSnap/releases/latest"
-    $asset = $rel.assets | Where-Object { $_.name -like "*bin_x64.zip" } | Select-Object -First 1
-    $zip = Join-Path $env:TEMP $asset.name
-    Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zip -UseBasicParsing
-    New-Item -ItemType Directory -Path $altSnapDir -Force | Out-Null
-    Expand-Archive -Path $zip -DestinationPath $altSnapDir -Force
-    Remove-Item $zip
-    Write-Host "  [OK] AltSnap $($rel.tag_name) installed at $altSnapDir"
-} else {
-    Write-Host "  [SKIP] AltSnap already present"
-}
-
-# ── Startup shortcuts (AltSnap + AHK hotkeys) ────────────────────
+# ── Startup shortcuts (AHK hotkeys) ──────────────────────────────
 $startupDir = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup"
 $WshShell = New-Object -ComObject WScript.Shell
-
-$altSnapLnk = Join-Path $startupDir "AltSnap.lnk"
-$lnk = $WshShell.CreateShortcut($altSnapLnk)
-$lnk.TargetPath = $altSnapExe
-$lnk.WorkingDirectory = $altSnapDir
-$lnk.Description = "AltSnap - Alt+drag to move/resize windows"
-$lnk.Save()
-Write-Host "  [OK] AltSnap startup shortcut"
 
 $ahkExe = "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe"
 $ahkScript = Join-Path $PSScriptRoot "hotkeys.ahk"
