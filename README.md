@@ -4,7 +4,7 @@ Cross-platform dev environment managed by [chezmoi](https://chezmoi.io/).
 
 | Platform | Stack |
 |---|---|
-| **Windows** | PowerShell, Windows Terminal, AutoHotkey, AltSnap |
+| **Windows** | PowerShell, Windows Terminal, AutoHotkey |
 | **Arch Linux (Hyprland)** | waybar, wofi, kitty, OpenVPN + systemd-resolved |
 | **Linux / WSL** | zsh, starship, zoxide, fzf, eza, bat, ripgrep |
 
