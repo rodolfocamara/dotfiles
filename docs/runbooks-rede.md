@@ -149,15 +149,19 @@ adianta mexer nela.
 
 Causa mais comum do `AUTH_FAILED` com senha certa — **usuário vazio**:
 
+Cuidado com o campo: o plugin do openvpn lê `username` de dentro do
+`vpn.data`, **não** a propriedade `vpn.user-name` do NetworkManager. Essa
+segunda pode estar vazia com tudo funcionando — não é ela que vale.
+
 ```bash
-nmcli connection show "$VPN" | grep -E 'vpn.user-name|connection-type'
+nmcli connection show "$VPN" | grep '^vpn.data' | tr ',' '\n' | grep -E 'username|connection-type'
 ```
 
-Com `connection-type = password-tls` o openvpn manda usuário **e** senha; em
-branco, o servidor recusa mesmo com a senha correta.
+Com `connection-type = password-tls` o openvpn manda usuário **e** senha; sem
+`username`, o servidor recusa mesmo com a senha correta.
 
 ```bash
-nmcli connection modify "$VPN" vpn.user-name 'SEU_USUARIO'
+nmcli connection modify "$VPN" +vpn.data 'username=SEU_USUARIO'
 ```
 
 Cuidado: falhas repetidas podem bloquear a conta no servidor. Confirme a
