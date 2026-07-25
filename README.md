@@ -28,8 +28,11 @@ echo 'sourceDir = "~/Repos/dotfiles"' > ~/.config/chezmoi/chezmoi.toml
 # 4. Apply
 chezmoi apply -v
 
-# 5. /etc targets (OpenVPN, polkit) — Linux only
-sudo chezmoi apply -v
+# 5. /etc files (OpenVPN, polkit, wsl.conf) — Linux only.
+# NOT chezmoi: its destDir is always $HOME, so the etc/ tree would land in
+# ~/etc/. Run as yourself; the script sudos only where it writes.
+./scripts/install-etc.sh --dry-run
+./scripts/install-etc.sh
 ```
 
 ## Daily workflow
@@ -59,7 +62,7 @@ dot_config/     --> ~/.config/   fish, starship, hypr, waybar, kitty, zed, searx
 apps/           --> Windows-only (PowerShell, Windows Terminal)
 AppData/        --> %APPDATA%    Windows-only targets (Zed)
 .chezmoitemplates/               shared content included by per-OS targets (Zed)
-etc/            --> /etc/        system files (sudo apply)
+etc/            --> /etc/        via scripts/install-etc.sh (not a chezmoi target)
 packages/                        per-OS package lists
 scripts/                         setup helpers
 docs/                            guides
@@ -112,8 +115,10 @@ Cost: ~80ms added to Git Bash startup.
 # First time: create key
 age-keygen -o ~/.config/chezmoi/age.txt
 
-# Encrypt a sensitive file under management
-chezmoi add --encrypt /etc/openvpn/client/client.conf
+# Encrypt a file that lives in /etc. `chezmoi add` does not work for those —
+# they are not chezmoi targets. Encrypt straight into the source tree:
+age -e -r "$(age-keygen -y < ~/.config/chezmoi/age.txt)" \
+    < plaintext > etc/openvpn/client/encrypted_client.conf.age
 ```
 
 See [docs/openvpn.md](docs/openvpn.md) for VPN setup.

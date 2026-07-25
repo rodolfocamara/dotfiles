@@ -10,8 +10,18 @@ encryption = "age"
 [age]
 # index evita erro quando configDir não existe (versões antigas)
 identity = "{{ or (index .chezmoi "configDir") .chezmoi.homeDir }}/.config/chezmoi/age.txt"
-# recipient: required for `chezmoi add --encrypt`; get with: age-keygen -y < ~/.config/chezmoi/age.txt
-# recipient = "age1xxxxxxxx..."
+# recipient: necessário para `chezmoi add --encrypt`. Hoje fica vazio, então
+# adicionar arquivo criptografado não funciona (confira com `chezmoi dump-config`).
+#
+# O valor abaixo estava no .chezmoi.toml da raiz do source, que foi removido —
+# aquele arquivo não era lido por ninguém (o chezmoi init só procura
+# .chezmoi.$FORMAT.tmpl), então esse recipient nunca chegou a valer.
+#
+# Antes de descomentar, confirme que ele bate com a sua identity atual:
+#   age-keygen -y < ~/.config/chezmoi/age.txt
+# Descomentar com um recipient errado criptografa para uma chave que você não
+# tem mais — por isso ficou comentado em vez de eu simplesmente ligar.
+# recipient = "age1qgz7c54kkchzvfg3lgk2s7awe0t0w0sqdtvkfqxttf3tq92djs6qp3v5p4"
 
 # --- Windows Specific Mappings ---
 # chezmoi v2 does not support arbitrary [ "<target>" ] source = ... blocks
@@ -76,15 +86,12 @@ identity = "{{ or (index .chezmoi "configDir") .chezmoi.homeDir }}/.config/chezm
     args = ["-eu", "-o", "pipefail"]
 {{ end -}}
 
-# --- Targets para /etc (apply com: sudo chezmoi apply -v) ---
-[ "etc/openvpn/scripts/executable_dns-up.sh.tmpl" ]
-  target = "/etc/openvpn/scripts/dns-up.sh"
-[ "etc/openvpn/scripts/executable_dns-down.sh" ]
-  target = "/etc/openvpn/scripts/dns-down.sh"
-[ "etc/polkit-1/rules.d/49-openvpn-resolved.rules" ]
-  target = "/etc/polkit-1/rules.d/49-openvpn-resolved.rules"
-[ "etc/openvpn/client/encrypted_client.conf.age" ]
-  target = "/etc/openvpn/client/client.conf"
+# --- /etc não passa pelo chezmoi ---
+# Aqui existiam blocos [ "etc/..." ] target = "/etc/...". Eles nunca fizeram
+# nada: o chezmoi v2 não aceita esse formato, e `chezmoi target-path` provava
+# que a árvore etc/ mapeava para ~/etc/... . Gerenciar arquivo fora do $HOME é
+# um non-goal declarado do projeto. Quem instala esses arquivos agora é
+# scripts/install-etc.sh. Ver docs/openvpn.md.
 
 # --- General chezmoi settings can go here ---
 # Example: Use VS Code for editing

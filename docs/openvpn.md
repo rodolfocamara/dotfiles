@@ -1,6 +1,8 @@
 # OpenVPN client config (criptografado)
 
-Este repo gerencia o config do cliente OpenVPN em `/etc/openvpn/client/client.conf` com criptografia **age** via chezmoi. O arquivo no repo é `etc/openvpn/client/encrypted_client.conf.age` e é descriptografado no apply.
+Este repo versiona o config do cliente OpenVPN em `/etc/openvpn/client/client.conf` com criptografia **age**. O arquivo no repo é `etc/openvpn/client/encrypted_client.conf.age`.
+
+> **Mudou:** a árvore `etc/` **não passa mais pelo chezmoi**. Quem instala é `scripts/install-etc.sh`. Ver [Por que /etc saiu do chezmoi](#por-que-etc-saiu-do-chezmoi) no fim.
 
 ## Configurar tudo (passo a passo)
 
@@ -13,21 +15,29 @@ Para parar de digitar usuário/senha toda vez que reinicia a VPN:
    ```
    O script pede usuário e senha, grava em `/etc/openvpn/client/auth.txt` (não vai pro Git) e ajusta permissões.
 
-2. **Colocar no client.conf a linha que usa esse arquivo** — o target fica em `/etc`, então defina o destino como `/` (senão dá "not in destination directory" ou "not managed"):
+2. **Colocar no client.conf a linha que usa esse arquivo.** O arquivo no repo é criptografado, então edite descriptografando e recriptografando na raiz do repo:
    ```bash
-   CHEZMOI_DESTINATION_DIR=/ chezmoi edit /etc/openvpn/client/client.conf
+   cd ~/Repos/dotfiles
+   chezmoi decrypt etc/openvpn/client/encrypted_client.conf.age > /tmp/client.conf
+   $EDITOR /tmp/client.conf
    ```
    Adicione uma linha (por exemplo no fim):
    ```ini
    auth-user-pass /etc/openvpn/client/auth.txt
    ```
-   Salve e feche o editor.
-
-3. **Aplicar no /etc usando o mesmo repo** — com `sudo` o chezmoi usa o home do root e não acha seu clone; é obrigatório passar o source:
+   Recriptografe e apague o texto claro:
    ```bash
-   sudo chezmoi apply -S ~/Repos/dotfiles
+   age -e -r "$(age-keygen -y < ~/.config/chezmoi/age.txt)" \
+       < /tmp/client.conf > etc/openvpn/client/encrypted_client.conf.age
+   shred -u /tmp/client.conf
    ```
-   (Se der erro de path, use o path absoluto, ex.: `sudo chezmoi apply -S /home/rcamara/Repos/dotfiles`.)
+
+3. **Instalar em /etc:**
+   ```bash
+   ./scripts/install-etc.sh --dry-run   # confere os caminhos primeiro
+   ./scripts/install-etc.sh
+   ```
+   Rode como você mesmo, **não** com `sudo` — o script eleva sozinho onde precisa. Com `sudo`, o chezmoi olharia para o home do root e não acharia nem seus dados nem a chave age.
 
 4. **Reiniciar a VPN:**
    ```bash
@@ -83,10 +93,7 @@ O servidor pode pedir usuário e senha. Você precisa de um **arquivo de credenc
    seu_usuario
    sua_senha
    ```
-3. No `client.conf` (use `CHEZMOI_DESTINATION_DIR=/` para o path `/etc/...` ser aceito):
-   ```bash
-   CHEZMOI_DESTINATION_DIR=/ chezmoi edit /etc/openvpn/client/client.conf
-   ```
+3. No `client.conf` (ver [Atualizar o config](#atualizar-o-config) para o ciclo de descriptografar/editar/recriptografar):
    Adicione **com o caminho do arquivo**:
    ```ini
    auth-user-pass /etc/openvpn/client/auth.txt
@@ -101,28 +108,34 @@ O servidor pode pedir usuário e senha. Você precisa de um **arquivo de credenc
 
 ## Atualizar o config
 
-Edite com destino em `/` para o path `/etc/...` ser aceito (o chezmoi descriptografa para editar e recriptografa ao salvar):
+O `chezmoi edit` não serve aqui: o alvo não é do chezmoi. O ciclo é descriptografar num temporário, editar e recriptografar por cima do arquivo do repo:
 
 ```bash
-CHEZMOI_DESTINATION_DIR=/ chezmoi edit /etc/openvpn/client/client.conf
+cd ~/Repos/dotfiles
+chezmoi decrypt etc/openvpn/client/encrypted_client.conf.age > /tmp/client.conf
+$EDITOR /tmp/client.conf
+age -e -r "$(age-keygen -y < ~/.config/chezmoi/age.txt)" \
+    < /tmp/client.conf > etc/openvpn/client/encrypted_client.conf.age
+shred -u /tmp/client.conf
 ```
 
-Depois reaplique em `/etc` **passando o source** (senão o sudo usa o home do root e o apply não acha o repo) e reinicie a VPN:
+Depois instale e reinicie:
 
 ```bash
-sudo chezmoi apply -S ~/Repos/dotfiles
+./scripts/install-etc.sh
 sudo systemctl restart openvpn-client@client
 ```
 
 ## Aplicar (deploy)
 
-Na máquina onde quer o config (sempre com `-S` quando for aplicar em `/etc` com sudo):
-
 ```bash
-sudo chezmoi apply -S ~/Repos/dotfiles
+./scripts/install-etc.sh --dry-run   # mostra os caminhos, não escreve nada
+./scripts/install-etc.sh
 ```
 
-Isso grava o arquivo descriptografado em `/etc/openvpn/client/client.conf` com permissões (dir `750`, arquivo `640`, dono `root:network`) para o usuário `openvpn` (grupo `network`) conseguir ler.
+Rode **como você mesmo**, não com `sudo`: o script eleva sozinho nos `install`, mas a renderização do template e a descriptografia precisam rodar com o seu usuário (é onde estão o `.chezmoidata.toml` e a chave age).
+
+O script grava o `client.conf` descriptografado em `/etc/openvpn/client/client.conf` com dir `750`, arquivo `640` e dono `root:network`, para o usuário `openvpn` (grupo `network`) conseguir ler. Se a chave age não existir na máquina, ele pula esse arquivo e instala o resto.
 
 ## Reiniciar a VPN
 
@@ -144,4 +157,25 @@ Você deve ver os servidores DNS da VPN e os domínios split-DNS do túnel.
 
 ## Sem plaintext no repo
 
-Só o arquivo `.age` é versionado. Um `etc/openvpn/client/client.conf` em texto puro no source é ignorado pelo `.chezmoiignore`. Nunca faça commit do client config sem criptografia.
+Só o arquivo `.age` é versionado. A árvore `etc/` inteira é ignorada pelo `.chezmoiignore`, então um `client.conf` em texto puro no source nunca vira alvo. Ainda assim: nunca faça commit do client config sem criptografia.
+
+## Por que /etc saiu do chezmoi
+
+Gerenciar arquivo fora do `$HOME` é um [non-goal declarado](https://github.com/twpayne/chezmoi/discussions/1510) do chezmoi. O `destDir` dele é sempre o home, e a árvore `etc/` do source mapeava para dentro dele:
+
+```
+$ chezmoi target-path etc/openvpn/scripts/executable_dns-up.sh.tmpl
+/home/rcamara/etc/openvpn/scripts/dns-up.sh      # não /etc/...
+```
+
+Três coisas que a documentação antiga mandava fazer e que **não funcionavam**:
+
+| Comando | O que acontecia de verdade |
+|---|---|
+| `CHEZMOI_DESTINATION_DIR=/ chezmoi edit ...` | essa variável não existe no chezmoi; era ignorada em silêncio |
+| `sudo chezmoi apply -S ~/Repos/dotfiles` | com sudo o `$HOME` vira `/root`, então o destino virava `/root/etc/...` |
+| blocos `[ "etc/..." ] target = "/etc/..."` no config | formato não suportado no chezmoi v2 — no-op (o comentário no próprio arquivo já admitia isso) |
+
+Existe um `--destination /` que faz o `etc/` mapear certo, mas aí **todo o resto do repo passa a mirar a raiz do sistema** (`dot_zshrc` → `/.zshrc`, `dot_config/starship.toml` → `/.config/starship.toml`). Um `sudo chezmoi apply --destination /` sem argumentos de path espalharia seus dotfiles na raiz. Não vale o risco por quatro arquivos.
+
+Daí o `scripts/install-etc.sh`: renderiza o template e descriptografa como você, e chama `sudo install` só na hora de escrever.

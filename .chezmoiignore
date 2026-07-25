@@ -26,6 +26,10 @@ docs/
 packages/
 scripts/
 home/
+# etc/ NÃO é alvo do chezmoi. O destDir dele é sempre o home, então esta
+# árvore mapearia para ~/etc/openvpn/... — lixo no home, e os arquivos nunca
+# chegariam em /etc. Quem instala é scripts/install-etc.sh. Ver docs/openvpn.md.
+etc/
 
 # Stack de desktop do Hyprland. Fora do perfil hyprland não tem alvo com
 # sentido — inclusive no Windows, onde $profile cai em "generic".
@@ -67,13 +71,13 @@ scripts/install-packages.windows.ps1
 .local/bin/codex.cmd
 {{ end }}
 
-# Ignore Linux-only targets on Windows. No /etc, no age key, and os configs
-# de shell (direnv, zsh) não têm alvo com sentido. zsh roda dentro do WSL,
-# que o chezmoi enxerga como Linux.
-# O stack de desktop (hypr, waybar, wofi, kitty) não está listado aqui: quem
-# corta ele é o gate de $profile lá em cima, que já pega o Windows junto.
+# Ignore Linux-only targets on Windows. No age key, and os configs de shell
+# (direnv, zsh) não têm alvo com sentido. zsh roda dentro do WSL, que o chezmoi
+# enxerga como Linux.
+# Não estão listados aqui, de propósito: o stack de desktop (hypr, waybar,
+# wofi, kitty), cortado pelo gate de $profile lá em cima, que já pega o
+# Windows junto; e etc/, ignorado em todo OS, também lá em cima.
 {{ if eq .chezmoi.os "windows" }}
-etc/
 .config/direnv/
 .envrc
 .zshenv
@@ -94,10 +98,6 @@ apps/windows_terminal/
 # apps/windhawk/ is source-only staging compiled/installed via
 # sync-headset-widget.ps1, not a chezmoi target.
 apps/windhawk/
-# Linux-only run-after script (chmods /etc/openvpn/client/); no-op on
-# Windows but would still appear in `chezmoi status` on every apply.
-# .chezmoiignore matches the target name (without the run_after_ prefix).
-openvpn_client_permissions.sh
 # The codex bash wrapper is WSL/Linux-only; Windows uses codex.cmd instead.
 .local/bin/codex
 {{ end }}
@@ -107,13 +107,3 @@ openvpn_client_permissions.sh
 # regenerated from man pages. Listed here so a stray `chezmoi add` skips them.
 .config/fish/fish_variables
 .config/fish/completions/
-
-# Reject plaintext OpenVPN client config (only encrypted_client.conf.age is allowed)
-etc/openvpn/client/client.conf
-# Keep dir in git but do not apply .gitkeep to /etc
-etc/openvpn/client/.gitkeep
-
-# Skip the OpenVPN client perms script on WSL (no native /etc/openvpn use there).
-{{ if and (ne .chezmoi.os "windows") (contains "microsoft" (lower (or .chezmoi.kernel.osrelease ""))) }}
-openvpn_client_permissions.sh
-{{ end }}
