@@ -140,6 +140,9 @@ export NVM_DIR="$HOME/.nvm"
 
 [ -d "$HOME/.duckdb/cli/latest" ] && export PATH="$HOME/.duckdb/cli/latest:$PATH"
 [ -d "$HOME/bin" ] && export PATH="$HOME/bin:$PATH"
+# npm com prefix no home (npm config set prefix ~/.npm-global) — sem isso,
+# binário instalado com `npm i -g` não é encontrado.
+[ -d "$HOME/.npm-global/bin" ] && export PATH="$HOME/.npm-global/bin:$PATH"
 _oci_ac="$HOME/lib/oracle-cli/lib/python3.13/site-packages/oci_cli/bin/oci_autocomplete.sh"
 [ -f "$_oci_ac" ] && . "$_oci_ac"
 unset _oci_ac

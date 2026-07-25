@@ -1,4 +1,13 @@
 # =============================================================================
+# Config da distro (CachyOS)
+# =============================================================================
+# Vem primeiro para o que está abaixo poder sobrescrever. Guarda igual à do
+# dot_config/fish/config.fish: em WSL e em outras distros o pacote não existe.
+if [ -f /usr/share/cachyos-zsh-config/cachyos-config.zsh ]; then
+  source /usr/share/cachyos-zsh-config/cachyos-config.zsh
+fi
+
+# =============================================================================
 # History
 # =============================================================================
 HISTFILE=~/.zsh_history
@@ -192,6 +201,10 @@ update-all() {
   fi
   echo "==> done"
 }
+
+# npm com prefix no home (npm config set prefix ~/.npm-global) — sem isso,
+# binário instalado com `npm i -g` não é encontrado.
+[ -d "$HOME/.npm-global/bin" ] && export PATH="$HOME/.npm-global/bin:$PATH"
 
 # bun
 export BUN_INSTALL="$HOME/.bun"
