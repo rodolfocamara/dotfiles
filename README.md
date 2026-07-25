@@ -65,6 +65,19 @@ scripts/                         setup helpers
 docs/                            guides
 ```
 
+## Machine profiles
+
+OS is not enough: both Linux machines run different desktops (Hyprland vs KDE),
+so one machine's desktop config is dead weight on the other. Set the profile in
+`.chezmoidata.toml` at the source root — per machine, not committed:
+
+```toml
+profile = "hyprland"   # or "kde", "generic"
+```
+
+Without the file it auto-detects from the compositor binary. See
+[docs/machine-profiles.md](docs/machine-profiles.md).
+
 ## Per-OS package install
 
 ```bash

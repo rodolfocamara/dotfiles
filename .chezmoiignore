@@ -1,3 +1,23 @@
+{{/* ---------------------------------------------------------------------
+     Perfil de máquina.
+
+     O SO sozinho não separa este repo: as duas máquinas Linux rodam
+     desktops diferentes (uma Hyprland, outra KDE), e o config de desktop
+     de uma é lixo pendurado na outra — aparece como alvo pendente em todo
+     `chezmoi status` e some no meio do ruído.
+
+     Defina o perfil em .chezmoidata.toml na raiz do source. Esse arquivo é
+     por máquina e não vai pro git (está no .gitignore):
+
+         profile = "hyprland"    # ou "kde", ou "generic"
+
+     Sem esse arquivo, detecta pelo binário do compositor — máquina com
+     Hyprland instalado recebe o stack, o resto não.
+
+     Ver docs/machine-profiles.md.
+     --------------------------------------------------------------------- */}}
+{{- $profile := (index . "profile") | default (ternary "hyprland" "generic" (ne (lookPath "Hyprland") "")) }}
+
 # Standard ignored files/folders
 README.md
 
@@ -7,6 +27,15 @@ packages/
 scripts/
 home/
 
+# Stack de desktop do Hyprland. Fora do perfil hyprland não tem alvo com
+# sentido — inclusive no Windows, onde $profile cai em "generic".
+{{ if ne $profile "hyprland" }}
+.config/hypr/
+.config/waybar/
+.config/wofi/
+.config/kitty/
+{{ end }}
+
 # Ignore Windows-only directories on Linux/macOS.
 {{ if ne .chezmoi.os "windows" }}
 apps/
@@ -14,6 +43,14 @@ Documents/
 # %APPDATA% só existe no Windows (Zed lê settings.json de lá; no Linux/macOS
 # o mesmo conteúdo sai em .config/zed/ via .chezmoitemplates/zed/).
 AppData/
+# .wslconfig é lido pelo Windows em %USERPROFILE%\.wslconfig. No Linux nativo
+# não faz nada, e dentro do WSL também não (quem lê é o host).
+.wslconfig
+{{ end }}
+
+# /etc/wsl.conf só existe dentro do WSL.
+{{ if not (contains "microsoft" (lower (or .chezmoi.kernel.osrelease ""))) }}
+etc/wsl.conf
 {{ end }}
 
 # Ignore Linux-specific scripts on Windows
@@ -30,16 +67,13 @@ scripts/install-packages.windows.ps1
 .local/bin/codex.cmd
 {{ end }}
 
-# Ignore Linux-only targets on Windows. No /etc, no age key, and the
-# desktop/shell configs (Hyprland, Waybar, Wofi, Kitty, direnv, zsh)
-# have no meaningful Windows target. zsh runs inside WSL, which chezmoi
-# sees as Linux.
+# Ignore Linux-only targets on Windows. No /etc, no age key, and os configs
+# de shell (direnv, zsh) não têm alvo com sentido. zsh roda dentro do WSL,
+# que o chezmoi enxerga como Linux.
+# O stack de desktop (hypr, waybar, wofi, kitty) não está listado aqui: quem
+# corta ele é o gate de $profile lá em cima, que já pega o Windows junto.
 {{ if eq .chezmoi.os "windows" }}
 etc/
-.config/hypr/
-.config/waybar/
-.config/wofi/
-.config/kitty/
 .config/direnv/
 .envrc
 .zshenv
