@@ -1,0 +1,105 @@
+# SearxNG — instância local, uso exclusivo de agentes (Claude, Codex, OpenCode, Zed).
+# Aplicada em ~/.config/searxng/settings.yml e montada em /etc/searxng no container.
+# Sobe via quadlet: ~/.config/containers/systemd/searxng.container
+
+use_default_settings: true
+
+general:
+  debug: false
+  instance_name: "searxng-local"
+  # Sem telemetria: instância de uma pessoa só, métrica não serve pra nada.
+  enable_metrics: false
+
+server:
+  # base_url tem que bater com o PublishPort do quadlet.
+  base_url: "http://127.0.0.1:8888/"
+  port: 8080
+  bind_address: "0.0.0.0"
+  # Sobrescrito por SEARXNG_SECRET (secret.env, fora do git).
+  secret_key: "ultrasecretkey"
+  # Atrito nº2: o limiter derruba agente em minutos (5 req/s, 60 req/min).
+  # Bind é 127.0.0.1 e o único cliente sou eu — desligado, e é o que
+  # torna o Valkey dispensável.
+  limiter: false
+  public_instance: false
+  image_proxy: false
+  method: "GET"
+
+search:
+  # Atrito nº1: o default é só `html` e a API devolve 403.
+  formats:
+    - html
+    - json
+  # Viés pt-BR por padrão — o MCP ainda pode passar `language` por query.
+  default_lang: "pt-BR"
+  safe_search: 0
+  autocomplete: ""
+  ban_time_on_fail: 5
+  max_ban_time_on_fail: 120
+
+ui:
+  default_locale: "pt-BR"
+  query_in_title: true
+  infinite_scroll: false
+
+outgoing:
+  request_timeout: 6.0
+  max_request_timeout: 12.0
+  pool_connections: 100
+  pool_maxsize: 20
+  enable_http2: true
+
+# Atrito nº3: engine quebra. Esta lista é medida, não suposta — cada engine
+# testada isolada, com o isolamento conferido pelo campo `engines` de cada
+# resultado (ver docs/searxng.md § Engines):
+#
+#   google cse      20 resultados  ok
+#   duckduckgo      10 resultados  ok
+#   bing            10 resultados  ok
+#   duckduckgo web  10 resultados  ok, mas desligada upstream — reserva
+#   brave            0  HTTP 429 mesmo isolada e descansada
+#   startpage        0  CAPTCHA
+#   qwant            0  CAPTCHA
+#   mojeek           0  sem erro, simplesmente não devolve nada
+#
+# Não existe engine chamada `google` nesta versão do SearxNG — a busca web do
+# Google é a `google cse`. Declarar `- name: google` aqui não dá erro, só não
+# faz nada, e é fácil achar que está ligado quando não está.
+#
+# As três que funcionam ficam ligadas de propósito: se uma pegar captcha sob
+# uso agressivo, a busca degrada em vez de morrer. Reavaliar a cada 2-3 meses.
+engines:
+  - name: google cse
+    disabled: false
+    weight: 2
+
+  - name: duckduckgo
+    disabled: false
+    weight: 2
+
+  - name: bing
+    disabled: false
+    weight: 1.5
+
+  - name: wikipedia
+    disabled: false
+
+  # Bloqueadas deste IP. Ficam declaradas (não removidas) pra dar pra retestar
+  # com ?engines=brave sem editar arquivo — mas atenção: nome inválido no
+  # parâmetro `engines=` é ignorado em silêncio e o SearxNG roda o conjunto
+  # default, o que faz um teste ruim parecer bom.
+  - name: brave
+    disabled: true
+
+  - name: startpage
+    disabled: true
+
+  - name: qwant
+    disabled: true
+
+  - name: mojeek
+    disabled: true
+
+  # Reserva testada: se a `duckduckgo` cair, ligar esta.
+  - name: duckduckgo web
+    disabled: true

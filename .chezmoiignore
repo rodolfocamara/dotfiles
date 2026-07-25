@@ -41,6 +41,10 @@ etc/
 .envrc
 .zshenv
 .zshrc
+# SearxNG roda como quadlet rootless em systemd --user; nada disso existe no
+# Windows nativo. No WSL funciona (exige podman instalado).
+.config/containers/
+.config/searxng/
 # apps/windows_terminal/ has no active chezmoi mapping (Windows Terminal
 # settings are managed by run_once scripts, not chezmoi targets).
 apps/windows_terminal/

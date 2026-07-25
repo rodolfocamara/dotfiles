@@ -50,7 +50,7 @@ cd ~/Repos/dotfiles && git pull && cma
 
 ```
 dot_*           --> ~/           shell, git, envrc
-dot_config/     --> ~/.config/   starship, hypr, waybar, kitty
+dot_config/     --> ~/.config/   starship, hypr, waybar, kitty, searxng, quadlets
 apps/           --> Windows-only (PowerShell, Windows Terminal)
 etc/            --> /etc/        system files (sudo apply)
 packages/                        per-OS package lists
@@ -97,6 +97,18 @@ chezmoi add --encrypt /etc/openvpn/client/client.conf
 ```
 
 See [docs/openvpn.md](docs/openvpn.md) for VPN setup.
+
+## Local search for agents (Linux)
+
+SearxNG in a rootless podman quadlet, bound to `127.0.0.1:8888`, exposed to
+Claude Code / Codex / OpenCode / Zed through one MCP server. No quota, no
+per-query cost, `pt-BR` by default, and queries never leave the machine.
+
+```bash
+./scripts/setup-searxng.sh
+```
+
+See [docs/searxng.md](docs/searxng.md).
 
 ## Useful flags
 

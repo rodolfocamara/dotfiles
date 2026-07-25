@@ -30,3 +30,6 @@ polkit-kde-agent
 noto-fonts
 noto-fonts-emoji
 ttf-nerd-fonts-symbols
+
+# Containers rootless (SearxNG via quadlet — ver docs/searxng.md)
+podman

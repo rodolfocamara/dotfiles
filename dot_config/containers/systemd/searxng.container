@@ -1,0 +1,52 @@
+# SearxNG rootless via quadlet (systemd nativo — sobrevive reboot sem
+# `podman generate`, e o estado desejado fica versionado aqui).
+#
+#   systemctl --user daemon-reload
+#   systemctl --user start searxng
+#
+# Requer linger pro serviço subir sem sessão aberta:
+#   loginctl enable-linger $USER
+#
+# Config: ~/.config/searxng/settings.yml (versionado)
+# Segredo: ~/.config/searxng/secret.env  (gerado por scripts/setup-searxng.sh)
+
+[Unit]
+Description=SearxNG metasearch (local, agent-facing)
+Documentation=https://docs.searxng.org/
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+ContainerName=searxng
+Image=docker.io/searxng/searxng:latest
+AutoUpdate=registry
+
+# Só loopback. Nada disso é exposto na rede.
+PublishPort=127.0.0.1:8888:8080
+
+# Monta o ARQUIVO, não o diretório. O entrypoint do searxng faz chown -R em
+# /etc/searxng; com o diretório montado ele chowna o teu ~/.config/searxng
+# pra subuid (100976), teu usuário perde a escrita e o `chezmoi apply`
+# seguinte falha com Permission denied. Read-only no arquivo, e o container
+# chowna só o diretório interno dele.
+Volume=%h/.config/searxng/settings.yml:/etc/searxng/settings.yml:ro
+
+EnvironmentFile=%h/.config/searxng/secret.env
+Environment=SEARXNG_BASE_URL=http://127.0.0.1:8888/
+Environment=UWSGI_WORKERS=4
+Environment=UWSGI_THREADS=4
+
+NoNewPrivileges=true
+DropCapability=ALL
+AddCapability=CHOWN
+AddCapability=SETGID
+AddCapability=SETUID
+AddCapability=DAC_OVERRIDE
+
+[Service]
+Restart=always
+RestartSec=5
+TimeoutStartSec=300
+
+[Install]
+WantedBy=default.target
