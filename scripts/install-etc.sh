@@ -63,6 +63,23 @@ install_etc() {
 say "Instalando arquivos de sistema a partir de $REPO"
 [[ $DRY -eq 1 ]] && echo "(dry-run — nada será escrito)"
 
+# ── DNS over TLS ─────────────────────────────────────────────────
+# Só onde o systemd-resolved é quem resolve de fato. No WSL quem gera o
+# /etc/resolv.conf é o próprio WSL, então o arquivo ficaria inerte e só
+# confundiria na próxima vez que alguém for depurar DNS ali.
+if [[ "$(systemctl is-enabled systemd-resolved 2>/dev/null)" == "enabled" ]] \
+   && ! grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; then
+  install_etc "$REPO/etc/systemd/resolved.conf.d/dot.conf" \
+              /etc/systemd/resolved.conf.d/dot.conf 644 root:root
+  if [[ $DRY -eq 1 ]]; then
+    printf '  systemctl restart systemd-resolved\n'
+  else
+    sudo systemctl restart systemd-resolved
+  fi
+else
+  skip "/etc/systemd/resolved.conf.d/dot.conf — systemd-resolved não é o resolver aqui"
+fi
+
 # ── polkit: deixa o usuário openvpn falar com o systemd-resolved ──
 install_etc "$REPO/etc/polkit-1/rules.d/49-openvpn-resolved.rules" \
             /etc/polkit-1/rules.d/49-openvpn-resolved.rules 644 root:root
