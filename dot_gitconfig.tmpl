@@ -1,3 +1,14 @@
+{{- /* Credential helpers are machine facts, not preferences: the absolute paths
+       differ per distro (/usr/bin vs /usr/local/bin vs Windows) and gh/GCM may
+       not be installed at all. Detect them instead of hardcoding. */ -}}
+{{- $gcm := lookPath "git-credential-manager" -}}
+{{- $gh := lookPath "gh" -}}
+{{- /* On Windows, avoid an absolute path full of spaces and backslashes: git
+       expands a bare helper name `foo` to `git-credential-foo` found on PATH. */ -}}
+{{- if eq .chezmoi.os "windows" -}}
+{{- if $gcm }}{{ $gcm = "manager" }}{{ end -}}
+{{- if $gh }}{{ $gh = "gh" }}{{ end -}}
+{{- end -}}
 [user]
 	name = Rodolfo Camara
 	email = 1766356+rodolfocamara@users.noreply.github.com
@@ -5,10 +16,42 @@
 	autoSetupRemote = true
 [url "https://github.com/"]
 	insteadOf = git@github.com:
-[credential]
-	helper = cache
 [core]
 	editor = code --wait
+{{ if or $gcm $gh -}}
+# --- Credential helpers ----------------------------------------------------
+# ORDER IS LOAD-BEARING. git accumulates every matching credential.helper in
+# the order it appears, and an empty `helper =` resets the list collected so
+# far. A generic reset must therefore come BEFORE the per-host blocks. When it
+# comes after them -- which is how `gh auth setup-git` and
+# `git-credential-manager configure` had left ~/.gitconfig -- it silently
+# discards the per-host helpers, so they never run at all.
+#
+# This replaces the previous `helper = cache`, which conflicted with the helper
+# git was actually using and only held plaintext credentials in memory.
+{{ end -}}
+{{ if $gcm -}}
+[credential]
+	helper =
+	helper = {{ $gcm }}
+{{- if eq .chezmoi.os "linux" }}
+	# Requires a running Secret Service provider (gnome-keyring, KWallet, ...).
+	# Alternatives if none is available: gpg (pass), cache, plaintext.
+	credentialStore = secretservice
+{{- end }}
+# Azure DevOps serves multiple repos per host, so the path must be part of the
+# credential key.
+[credential "https://dev.azure.com"]
+	useHttpPath = true
+{{ end -}}
+{{ if $gh -}}
+# Additive, not a reset: no empty `helper =` here, so any generic helper set
+# above is still tried first and gh only runs if that returns nothing.
+[credential "https://github.com"]
+	helper = !{{ $gh }} auth git-credential
+[credential "https://gist.github.com"]
+	helper = !{{ $gh }} auth git-credential
+{{ end -}}
 {{- $workGit := (index . "workGit") | default dict -}}
 {{- $workDir := (index $workGit "dir") | default "" -}}
 {{- if $workDir }}

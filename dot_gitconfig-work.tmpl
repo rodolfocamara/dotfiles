@@ -1,17 +1,19 @@
+{{- /* Included from ~/.gitconfig via includeIf, so this file loads AFTER it.
+       Deliberately no `[credential] helper` here: an empty `helper =` reset
+       would wipe the helpers ~/.gitconfig already set up, and re-declaring the
+       helper would just run it twice inside work repos. Only work-specific
+       settings belong here -- they tune whatever helper is already in effect. */ -}}
 {{- $workGit := (index . "workGit") | default dict -}}
 {{- $workName := (index $workGit "name") | default "" -}}
 {{- $workEmail := (index $workGit "email") | default "" -}}
-{{- if and $workName $workEmail -}}
+{{- if and $workName $workEmail }}
 [user]
 	name = {{ $workName }}
 	email = {{ $workEmail }}
 {{- end }}
-{{ if ne .chezmoi.os "windows" }}
+{{- if lookPath "git-credential-manager" }}
 [credential]
-	helper = manager
-	helper =
-	helper = /usr/local/bin/git-credential-manager
 	azreposCredentialType = oauth
 [credential "https://dev.azure.com"]
 	useHttpPath = true
-{{ end }}
+{{- end }}
