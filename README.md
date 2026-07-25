@@ -156,6 +156,30 @@ Edit the template, not the target — the targets are one-line wrappers, so
 
 See [docs/zed.md](docs/zed.md).
 
+## External displays on NVIDIA (Linux)
+
+Two unrelated failures that both show up as a black screen.
+
+An external display that powers on but never gets an image, while KDE still
+reports it `connected` and `enabled`, is `nvidia_drm` losing the modeset race
+on hotplug. Cycling the mode forces a fresh one:
+
+```fish
+fix-monitor              # every enabled external display
+fix-monitor --dry-run    # just print what it would run
+```
+
+A black screen *after resume* is a different bug: `nvidia-suspend.service`
+ships disabled, so nothing writes VRAM out before S3 even though the driver
+was told to preserve it.
+
+```bash
+./scripts/setup-nvidia-sleep.sh
+```
+
+See [docs/nvidia-displays.md](docs/nvidia-displays.md) — it also covers how to
+tell the two apart with `ddcutil` before touching anything.
+
 ## Useful flags
 
 ```bash

@@ -33,3 +33,9 @@ ttf-nerd-fonts-symbols
 
 # Containers rootless (SearxNG via quadlet — ver docs/searxng.md)
 podman
+
+# Telas externas na NVIDIA — ver docs/nvidia-displays.md
+# jq: a função fix-monitor lê o `kscreen-doctor --json`
+# ddcutil: separa "EDID lê" de "monitor acordado", que é o diagnóstico inteiro
+jq
+ddcutil
