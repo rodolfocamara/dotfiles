@@ -11,6 +11,9 @@ home/
 {{ if ne .chezmoi.os "windows" }}
 apps/
 Documents/
+# %APPDATA% só existe no Windows (Zed lê settings.json de lá; no Linux/macOS
+# o mesmo conteúdo sai em .config/zed/ via .chezmoitemplates/zed/).
+AppData/
 {{ end }}
 
 # Ignore Linux-specific scripts on Windows
@@ -45,6 +48,9 @@ etc/
 # Windows nativo. No WSL funciona (exige podman instalado).
 .config/containers/
 .config/searxng/
+# O Zed no Windows lê %APPDATA%\Zed\, não ~/.config/zed/. Mesmo conteúdo,
+# alvo diferente: ver AppData/Roaming/Zed/ no source.
+.config/zed/
 # apps/windows_terminal/ has no active chezmoi mapping (Windows Terminal
 # settings are managed by run_once scripts, not chezmoi targets).
 apps/windows_terminal/

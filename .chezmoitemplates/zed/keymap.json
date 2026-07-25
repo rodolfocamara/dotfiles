@@ -1,0 +1,35 @@
+// Zed keymap — só as lacunas reais em relação ao VSCode.
+//
+// Fonte da verdade: dotfiles/.chezmoitemplates/zed/keymap.json
+// Alvos:  ~/.config/zed/keymap.json   e   %APPDATA%\Zed\keymap.json
+//
+// Antes de acrescentar coisa aqui: o keymap default do Zed no Linux já é
+// praticamente o do VSCode. Já vêm de fábrica, não redeclare —
+//   ctrl-p / ctrl-shift-p / ctrl-t          quick open, palette, símbolos
+//   ctrl-b / ctrl-alt-b / ctrl-j / ctrl-`   docks esquerda, direita, baixo, terminal
+//   ctrl-shift-e/f/g/x/m/o/b                explorer, busca, git, extensões, problemas, outline
+//   ctrl-w / ctrl-k w / ctrl-k ctrl-w       fechar aba / todas do pane / tudo
+//   alt-1..9 / ctrl-tab                     ir pra aba N / MRU
+//   f2, f8, f12, ctrl-. , ctrl-h, ctrl-r    rename, diagnóstico, definição, code action, replace, recentes
+//   alt-up/down, ctrl-shift-k, ctrl-/       mover linha, deletar linha, comentar
+//   ctrl-d, ctrl-shift-l, ctrl-k ctrl-d     seleção múltipla
+//   ctrl-\ , ctrl-k ctrl-0/ctrl-j           split, fold all / unfold all
+[
+  {
+    // Única divergência de músculo que sobrou: o Zed inverte copiar-linha com
+    // inserir-cursor.
+    //   Zed     shift-alt-up      = inserir cursor acima
+    //           ctrl-alt-shift-up = duplicar linha acima
+    //   VSCode  shift-alt-up      = duplicar (copiar) linha acima
+    //           ctrl-alt-up       = inserir cursor acima
+    // Escopo "mode == full" = só buffers de arquivo, para não roubar
+    // ctrl-alt-up/down do scroll do painel de agente.
+    "context": "Editor && mode == full",
+    "bindings": {
+      "shift-alt-up": "editor::DuplicateLineUp",
+      "shift-alt-down": "editor::DuplicateLineDown",
+      "ctrl-alt-up": ["editor::AddSelectionAbove", { "skip_soft_wrap": true }],
+      "ctrl-alt-down": ["editor::AddSelectionBelow", { "skip_soft_wrap": true }]
+    }
+  }
+]

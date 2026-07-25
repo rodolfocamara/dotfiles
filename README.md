@@ -50,8 +50,10 @@ cd ~/Repos/dotfiles && git pull && cma
 
 ```
 dot_*           --> ~/           shell, git, envrc
-dot_config/     --> ~/.config/   starship, hypr, waybar, kitty, searxng, quadlets
+dot_config/     --> ~/.config/   starship, hypr, waybar, kitty, zed, searxng, quadlets
 apps/           --> Windows-only (PowerShell, Windows Terminal)
+AppData/        --> %APPDATA%    Windows-only targets (Zed)
+.chezmoitemplates/               shared content included by per-OS targets (Zed)
 etc/            --> /etc/        system files (sudo apply)
 packages/                        per-OS package lists
 scripts/                         setup helpers
@@ -109,6 +111,17 @@ per-query cost, `pt-BR` by default, and queries never leave the machine.
 ```
 
 See [docs/searxng.md](docs/searxng.md).
+
+## Zed (VSCode-like, Linux + Windows)
+
+Same Zed profile on both machines: VSCode keymap and layout (explorer/git on
+the left, agent panel on the right), shared from `.chezmoitemplates/zed/` into
+`~/.config/zed/` and `%APPDATA%\Zed\`.
+
+Edit the template, not the target — the targets are one-line wrappers, so
+`chezmoi re-add` does not work for them.
+
+See [docs/zed.md](docs/zed.md).
 
 ## Useful flags
 

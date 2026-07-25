@@ -1,0 +1,107 @@
+// Zed — perfil "parecido com VSCode / Claude Desktop".
+//
+// Fonte da verdade: dotfiles/.chezmoitemplates/zed/settings.json
+// Alvos:  ~/.config/zed/settings.json      (Linux / macOS)
+//         %APPDATA%\Zed\settings.json      (Windows)
+// Não edite os alvos direto — edite aqui e rode `chezmoi apply`.
+//
+// Regra deste arquivo: só entra chave que DIVERGE do default do Zed (ou que
+// vale deixar explícita com um comentário explicando a escolha). Se algo do
+// VSCode não está aqui, é porque o default do Zed já bate.
+// Para ver os defaults: command palette > `zed: open default settings`.
+{
+  // ----------------------------------------------------------------- keymap
+  // Default é "Zed" — que já é quase VSCode. Pôr "VSCode" empilha a camada
+  // vscode.json por cima: shift-alt-f (formatar documento), ctrl-i (inline
+  // assist), ctrl-k z (zen mode), f5/f10/f11 (debug), ctrl-alt-i (agent panel),
+  // ctrl-shift-a (block comment).
+  "base_keymap": "VSCode",
+
+  // -------------------------------------------------------------- aparência
+  "theme": {
+    "mode": "system",
+    "light": "One Light",
+    "dark": "Ayu Dark"
+  },
+  "icon_theme": "Catppuccin Mocha",
+  // Iguais ao default do Zed hoje, mas explícitos: é o primeiro lugar onde a
+  // gente mexe quando a tela muda.
+  "ui_font_size": 16,
+  "buffer_font_size": 15,
+  // A fonte do editor fica a bundled (.ZedMono/Lilex), que existe em qualquer
+  // máquina; o fallback entra só para os glyphs de Nerd Font.
+  "buffer_font_fallbacks": ["Symbols Nerd Font"],
+
+  // -------------------------------------------------- layout igual ao VSCode
+  // Explorer, Outline e Source Control à esquerda; chat do agente à direita;
+  // terminal embaixo (esse último já é default). O default do Zed joga
+  // project_panel, outline_panel e agent para o lado errado.
+  "project_panel": {
+    "dock": "left",
+    "default_width": 260,
+    "indent_size": 16
+  },
+  "outline_panel": {
+    "dock": "left"
+  },
+  "git_panel": {
+    "dock": "left",
+    "tree_view": true
+  },
+  "terminal": {
+    // Mesma família do kitty (dot_config/kitty/kitty.conf). A variante "Mono"
+    // encaixa os glyphs em uma célula, que é o que grade de terminal quer.
+    // Sem Nerd Font o prompt do starship perde os ícones.
+    "font_family": "JetBrainsMono Nerd Font Mono",
+    "font_size": 13
+  },
+
+  // ------------------------------------------------- chrome do editor VSCode
+  "minimap": {
+    "show": "auto",
+    "thumb": "hover",
+    "current_line_highlight": "line"
+  },
+  "tabs": {
+    "file_icons": true,
+    "git_status": true,
+    "show_diagnostics": "errors"
+  },
+  "indent_guides": {
+    "coloring": "indent_aware"
+  },
+  // Barra de menu no título, como o VSCode no Windows/Linux.
+  "title_bar": {
+    "show_menus": true
+  },
+
+  // -------------------------------------------------------- salvar / sessão
+  // Formata via LSP/prettier ao salvar. Para desligar em um projeto só, ponha
+  // "format_on_save": "off" no .zed/settings.json do repo.
+  "format_on_save": "on",
+  // Igual ao VSCode (e ao default do Zed): autosave desligado. Se quiser ligar,
+  // "on_focus_change" — lembrando que no Zed o autosave dispara format_on_save.
+  "autosave": "off",
+  "session": {
+    "trust_all_worktrees": true
+  },
+
+  // ----------------------------------- painel de agente estilo Claude Desktop
+  // Coluna à direita (onde o Copilot Chat mora no VSCode). O resto do "jeitão
+  // Claude Desktop" já é default no Zed: largura de leitura limitada e
+  // centralizada (limit_content_width/max_content_width: 850), histórico de
+  // threads à esquerda (sidebar_side), Enter envia (use_modifier_to_send:
+  // false), cards de edit/terminal expandidos.
+  "agent": {
+    "dock": "right",
+    "default_width": 560,
+    // Ping quando o agente termina e o painel não está visível.
+    "play_sound_when_agent_done": "when_hidden"
+  },
+  // Default é 12, pequeno demais para ler resposta longa.
+  "agent_buffer_font_size": 14,
+  "agent_servers": {
+    "claude-acp": { "type": "registry" },
+    "codex-acp": { "type": "registry" }
+  }
+}
