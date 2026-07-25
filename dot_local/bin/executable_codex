@@ -21,8 +21,26 @@ NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 # Default pinned version for codex (change this if you want another "home" for it)
 : "${CODEX_NODE_VERSION:=v24.16.0}"
 
+# Outro codex no PATH que não seja este próprio wrapper. Nem toda máquina usa
+# nvm: no Arch o codex vem de `npm -g` com prefix no home. Sem isto, o wrapper
+# ganha do PATH, aborta, e some com um codex que estava funcionando.
+other_codex() {
+  local self candidate
+  self="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+  while read -r candidate; do
+    [[ -x "$candidate" ]] || continue
+    [[ "$(readlink -f "$candidate" 2>/dev/null || echo "$candidate")" == "$self" ]] && continue
+    printf '%s' "$candidate"
+    return 0
+  done < <(type -aP codex 2>/dev/null)
+  return 1
+}
+
 if [[ ! -d "$NVM_DIR" ]]; then
-  echo "codex wrapper: NVM not found at $NVM_DIR" >&2
+  if fallback="$(other_codex)"; then
+    exec "$fallback" "$@"
+  fi
+  echo "codex wrapper: NVM not found at $NVM_DIR, and no other codex on PATH" >&2
   exit 127
 fi
 
