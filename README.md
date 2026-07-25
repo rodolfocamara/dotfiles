@@ -123,6 +123,16 @@ age -e -r "$(age-keygen -y < ~/.config/chezmoi/age.txt)" \
 
 See [docs/openvpn.md](docs/openvpn.md) for VPN setup.
 
+## Network runbooks
+
+DNS goes out over TLS (Quad9, strict), the router's DNS is ignored, the Wi-Fi
+MAC is per-network stable, and the VPN is split-tunnel. Each of those has a
+failure mode that is not obvious six months later — a captive portal that will
+not load, a VPN that kills the internet, an `AUTH_FAILED` that is not the
+password you think it is.
+
+Symptom → diagnosis → command: [docs/runbooks-rede.md](docs/runbooks-rede.md).
+
 ## Local search for agents (Linux)
 
 SearxNG in a rootless podman quadlet, bound to `127.0.0.1:8888`, exposed to
