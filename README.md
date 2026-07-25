@@ -5,7 +5,7 @@ Cross-platform dev environment managed by [chezmoi](https://chezmoi.io/).
 | Platform | Stack |
 |---|---|
 | **Windows** | PowerShell, Windows Terminal, AutoHotkey |
-| **Arch Linux (Hyprland)** | waybar, wofi, kitty, OpenVPN + systemd-resolved |
+| **Arch Linux (Hyprland)** | fish, waybar, wofi, kitty, OpenVPN + systemd-resolved |
 | **Linux / WSL** | zsh, starship, zoxide, fzf, eza, bat, ripgrep |
 
 ## Install (fresh machine)
@@ -37,7 +37,7 @@ sudo chezmoi apply -v
 ```bash
 # Edit in the repo, then deploy
 vim ~/Repos/dotfiles/dot_zshrc
-cma                          # alias for: chezmoi apply
+cma                          # chezmoi apply — zsh alias, fish abbr
 
 # Or capture changes you made directly in $HOME back into the repo
 chezmoi re-add ~/.zshrc
@@ -46,11 +46,16 @@ chezmoi re-add ~/.zshrc
 cd ~/Repos/dotfiles && git pull && cma
 ```
 
+`cma` and the `g*` git shortcuts are defined once per shell: as aliases in
+[dot_zshrc](dot_zshrc) and as abbreviations in
+[dot_config/fish/config.fish](dot_config/fish/config.fish). fish is the login
+shell on Arch/CachyOS, so keep the two in sync when adding a new one.
+
 ## Layout
 
 ```
 dot_*           --> ~/           shell, git, envrc
-dot_config/     --> ~/.config/   starship, hypr, waybar, kitty, zed, searxng, quadlets
+dot_config/     --> ~/.config/   fish, starship, hypr, waybar, kitty, zed, searxng, quadlets
 apps/           --> Windows-only (PowerShell, Windows Terminal)
 AppData/        --> %APPDATA%    Windows-only targets (Zed)
 .chezmoitemplates/               shared content included by per-OS targets (Zed)

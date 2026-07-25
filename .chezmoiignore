@@ -44,6 +44,9 @@ etc/
 .envrc
 .zshenv
 .zshrc
+# fish é o shell de login no Arch/CachyOS. Não existe no Windows nativo; dentro
+# do WSL funciona, e lá o chezmoi enxerga Linux.
+.config/fish/
 # SearxNG roda como quadlet rootless em systemd --user; nada disso existe no
 # Windows nativo. No WSL funciona (exige podman instalado).
 .config/containers/
@@ -64,6 +67,12 @@ openvpn_client_permissions.sh
 # The codex bash wrapper is WSL/Linux-only; Windows uses codex.cmd instead.
 .local/bin/codex
 {{ end }}
+
+# fish runtime state, not config: fish_variables is the universal-variable store
+# fish rewrites on every `set -U` (and is mode 0600), and completions/ is
+# regenerated from man pages. Listed here so a stray `chezmoi add` skips them.
+.config/fish/fish_variables
+.config/fish/completions/
 
 # Reject plaintext OpenVPN client config (only encrypted_client.conf.age is allowed)
 etc/openvpn/client/client.conf
