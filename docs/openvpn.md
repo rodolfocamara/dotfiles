@@ -1,4 +1,56 @@
-# OpenVPN client config (criptografado)
+# OpenVPN
+
+Existem **dois caminhos** neste repo, e eles não se misturam. Escolha pela máquina:
+
+| Máquina | Caminho | Onde está |
+|---|---|---|
+| Arch/KDE (desktop) | **NetworkManager** (plasma-nm) | [`scripts/setup-vpn-nm.sh`](../scripts/setup-vpn-nm.sh) — ver [VPN pelo NetworkManager](#vpn-pelo-networkmanager) |
+| WSL / servidor sem desktop | `openvpn-client@` do systemd | `etc/openvpn/` + [`scripts/install-etc.sh`](../scripts/install-etc.sh) — o resto deste documento |
+
+Se você já usa a VPN no plasma-nm, **não** precisa de nada de `/etc`: o NetworkManager tem o próprio cliente, o próprio split-DNS e não lê o `client.conf`.
+
+---
+
+## VPN pelo NetworkManager
+
+Importar um `.ovpn` cru no plasma-nm dá um perfil que **sequestra a rota default e o DNS inteiro** — o resto da internet para de funcionar e o resolver da empresa passa a ver todo domínio que você consulta. O script corrige isso:
+
+```bash
+./scripts/setup-vpn-nm.sh --dry-run
+./scripts/setup-vpn-nm.sh
+```
+
+O que ele garante no perfil:
+
+| Ajuste | Por quê |
+|---|---|
+| `ipv4/ipv6.never-default yes` | a VPN não vira rota default; só as sub-redes que o servidor empurrar passam por ela |
+| `ipv4/ipv6.dns-search ~dominio` | só esses domínios vão pro DNS da VPN (o `~` = domínio de roteamento) |
+| `ipv4/ipv6.dns-priority 50` | positivo, então o link nunca vira rota default de DNS |
+| `connection.mdns 0` / `llmnr 0` | não anuncia o nome da sua máquina dentro da rede remota |
+
+Nada específico da empresa está no repo — **este repositório é público**. Endpoint, domínios internos e usuário ficam no `.chezmoidata.toml` (por máquina, no `.gitignore`), e o `.ovpn` fica fora do repo:
+
+```toml
+[workVpn]
+ovpnFile        = "~/Documents/vpn/EMPRESA.ovpn"
+splitDnsDomains = ["empresa.com.br", "empresa.local"]
+username        = "seu.usuario"
+```
+
+Conferir depois de conectar:
+
+```bash
+ip route get 1.1.1.1                            # tem que sair pela interface normal
+resolvectl status tun0                          # Default Route: no
+resolvectl query --cache=no <dominio-interno>   # tem que responder por tun0
+```
+
+**Para subir sozinho no boot**, a senha precisa estar guardada no sistema, não na KWallet: no diálogo de senha marque "armazenar para todos os usuários" (isso muda `password-flags` de `1` para `0`). Com a senha *agent-owned* o NM só consegue autenticar depois que você loga na sessão gráfica.
+
+---
+
+## VPN pelo systemd (WSL / sem desktop)
 
 Este repo versiona o config do cliente OpenVPN em `/etc/openvpn/client/client.conf` com criptografia **age**. O arquivo no repo é `etc/openvpn/client/encrypted_client.conf.age`.
 
