@@ -10,11 +10,17 @@
 #
 #   fix-monitor              cicla toda tela externa ligada
 #   fix-monitor HDMI-A-1     cicla só essa
+#   fix-monitor --top        cicla a tela externa mais acima no layout
 #   fix-monitor --dry-run    só mostra os comandos que rodaria
 
 function fix-monitor --description 'Força um modeset nas telas externas (NVIDIA + KDE)'
-    argparse 'n/dry-run' -- $argv
+    argparse 'n/dry-run' 't/top' -- $argv
     or return 1
+
+    if set -q _flag_top; and test (count $argv) -gt 0
+        echo "fix-monitor: --top não aceita um output junto." >&2
+        return 1
+    end
 
     if not command -q kscreen-doctor
         echo "fix-monitor: kscreen-doctor não encontrado — isto é KDE only." >&2
@@ -34,8 +40,19 @@ function fix-monitor --description 'Força um modeset nas telas externas (NVIDIA
     # Sem argumento, pega toda tela externa ligada. O painel do notebook fica
     # de fora de propósito: o bug é do link externo, e piscar o painel só
     # atrapalha (é nele que você está lendo o erro, se der errado).
-    set -l targets $argv
-    if test (count $targets) -eq 0
+    set -l targets
+    if set -q _flag_top
+        # Automatiza o caso desta máquina sem amarrar o comando ao nome do
+        # conector: cabo/driver podem trocar HDMI-A-1 por outro nome. Em empate,
+        # mantém a primeira saída devolvida pelo KScreen.
+        set targets (echo $json | jq -r '
+            [.outputs[]
+             | select(.enabled and .connected)
+             | select(.name | test("^(eDP|LVDS|DSI)") | not)]
+            | if length > 0 then min_by(.pos.y).name else empty end')
+    else if test (count $argv) -gt 0
+        set targets $argv
+    else
         set targets (echo $json | jq -r '
             .outputs[]
             | select(.enabled and .connected)

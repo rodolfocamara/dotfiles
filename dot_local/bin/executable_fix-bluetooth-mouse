@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+# Recupera um mouse Bluetooth cujo bond continua válido, mas o BlueZ deixou de
+# reconectar. Nunca remove nem refaz o pareamento: primeiro tenta Connect e só
+# reinicializa o controlador se a conexão direta travar.
+
+set -uo pipefail
+
+mouse=${1:-${FIX_BLUETOOTH_MOUSE:-}}
+connect_timeout=${FIX_BLUETOOTH_CONNECT_TIMEOUT_SECONDS:-10}
+
+if [[ -z "$mouse" ]]; then
+    echo "uso: fix-bluetooth-mouse AA:BB:CC:DD:EE:FF" >&2
+    exit 2
+fi
+if [[ ! "$mouse" =~ ^([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}$ ]]; then
+    echo "fix-bluetooth-mouse: endereço inválido: $mouse" >&2
+    exit 2
+fi
+if [[ ! "$connect_timeout" =~ ^[0-9]+$ ]]; then
+    echo "fix-bluetooth-mouse: timeout precisa ser inteiro" >&2
+    exit 2
+fi
+
+device_connected() {
+    bluetoothctl info "$1" 2>/dev/null | grep -q '^[[:space:]]*Connected: yes$'
+}
+
+try_connect() {
+    timeout "${connect_timeout}s" bluetoothctl connect "$1" >/dev/null 2>&1 || true
+    device_connected "$1"
+}
+
+controller_powered=0
+if bluetoothctl show 2>/dev/null | grep -q '^[[:space:]]*Powered: yes$'; then
+    controller_powered=1
+fi
+
+if [[ $controller_powered -eq 0 ]]; then
+    echo "fix-bluetooth-mouse: controlador desligado; respeitando o estado atual"
+    exit 0
+fi
+
+info=$(bluetoothctl info "$mouse" 2>/dev/null || true)
+if ! grep -q '^[[:space:]]*Paired: yes$' <<<"$info" ||
+   ! grep -q '^[[:space:]]*Bonded: yes$' <<<"$info"; then
+    echo "fix-bluetooth-mouse: $mouse não tem bond válido; não vou apagá-lo nem parear sozinho" >&2
+    exit 1
+fi
+
+if device_connected "$mouse"; then
+    echo "fix-bluetooth-mouse: mouse já conectado"
+    exit 0
+fi
+
+echo "fix-bluetooth-mouse: tentando reconexão direta"
+if try_connect "$mouse"; then
+    echo "fix-bluetooth-mouse: reconectado sem reset"
+    exit 0
+fi
+
+# Guarda quem estava ativo para o fallback não sacrificar fones/teclado. Os
+# perfis normalmente voltam sozinhos depois do power on; a lista garante uma
+# tentativa explícita caso isso não aconteça.
+mapfile -t previously_connected < <(
+    bluetoothctl devices Connected 2>/dev/null |
+        grep -oE '([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}' |
+        tr '[:lower:]' '[:upper:]'
+)
+
+powered_off=0
+# Chamada indiretamente pelo trap abaixo.
+# shellcheck disable=SC2329
+restore_power() {
+    if [[ $powered_off -eq 1 ]]; then
+        bluetoothctl power on >/dev/null 2>&1 || true
+    fi
+}
+trap restore_power EXIT
+
+echo "fix-bluetooth-mouse: conexão travou; reinicializando o controlador"
+if ! bluetoothctl power off >/dev/null 2>&1; then
+    echo "fix-bluetooth-mouse: não foi possível desligar o controlador" >&2
+    exit 1
+fi
+powered_off=1
+sleep 2
+
+if ! bluetoothctl power on >/dev/null 2>&1; then
+    echo "fix-bluetooth-mouse: não foi possível religar o controlador" >&2
+    exit 1
+fi
+powered_off=0
+sleep 3
+
+bluetoothctl trust "$mouse" >/dev/null 2>&1 || true
+mouse_ok=0
+for attempt in 1 2; do
+    if try_connect "$mouse"; then
+        mouse_ok=1
+        break
+    fi
+    (( attempt < 2 )) && sleep 2
+done
+
+for address in "${previously_connected[@]}"; do
+    [[ "$address" == "${mouse^^}" ]] && continue
+    device_connected "$address" || try_connect "$address" || true
+done
+
+if [[ $mouse_ok -eq 1 ]]; then
+    echo "fix-bluetooth-mouse: reconectado após reset"
+    exit 0
+fi
+
+echo "fix-bluetooth-mouse: mouse continua inacessível; confirme energia e canal Easy-Switch" >&2
+exit 1

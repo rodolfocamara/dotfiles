@@ -166,12 +166,28 @@ on hotplug. Cycling the mode forces a fresh one:
 
 ```fish
 fix-monitor              # every enabled external display
+fix-monitor --top        # only the upper external display
 fix-monitor --dry-run    # just print what it would run
 ```
 
-A black screen *after resume* is a different bug: `nvidia-suspend.service`
-ships disabled, so nothing writes VRAM out before S3 even though the driver
-was told to preserve it.
+On the KDE machine, a user service watches both screen unlock and a real
+system resume, then repairs `HDMI-A-1` and reconnects the MX Master 3S
+automatically after a short settling delay. It is deployed and enabled by
+`chezmoi apply`:
+
+```bash
+systemctl --user status fix-monitor-after-resume.service
+journalctl --user -u fix-monitor-after-resume.service
+```
+
+The mouse recovery preserves its existing bond. It tries a normal connection
+first and only power-cycles the Bluetooth controller if BlueZ is stuck; it
+never removes or re-pairs the device. See
+[docs/bluetooth-mouse.md](docs/bluetooth-mouse.md).
+
+A black screen after a *real S3 resume* is a different bug:
+`nvidia-suspend.service` ships disabled, so nothing writes VRAM out before S3
+even though the driver was told to preserve it.
 
 ```bash
 ./scripts/setup-nvidia-sleep.sh

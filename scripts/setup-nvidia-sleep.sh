@@ -85,9 +85,19 @@ fi
 #     WantedBy=systemd-hibernate.service
 #
 # É o único WantedBy dele. Com o alvo apontando para /dev/null, habilitar é
-# criar um link para um gancho que nunca dispara. nvidia-resume é outro caso
-# apesar do nome — ele também pendura em systemd-suspend.service, que está vivo.
+# criar um link para um gancho que nunca dispara. nvidia-resume é outro caso:
+# ele também pendura em systemd-suspend.service. A unit pode ficar habilitada
+# mesmo se esse alvo estiver mascarado hoje, pronta para uma futura reativação.
 UNITS=(nvidia-suspend.service nvidia-resume.service)
+
+SUSPEND_STATE="$(systemctl is-enabled systemd-suspend.service 2>&1 || true)"
+if [[ "$SUSPEND_STATE" == "masked" ]]; then
+  SUSPEND_MASKED=1
+  warn "systemd-suspend.service está mascarado — o PowerDevil só apaga a tela;"
+  warn "as units NVIDIA não executam nesse wake. Ver fix-monitor-after-resume."
+else
+  SUSPEND_MASKED=0
+fi
 
 HIBER_STATE="$(systemctl is-enabled systemd-hibernate.service 2>&1 || true)"
 if [[ "$HIBER_STATE" == "masked" ]]; then
@@ -114,7 +124,12 @@ done
 
 if [[ ${#TO_ENABLE[@]} -eq 0 ]]; then
   echo
-  echo "Nada a fazer — já está tudo no lugar."
+  if [[ $SUSPEND_MASKED -eq 1 ]]; then
+    echo "Nada a habilitar. As units estão prontas, mas dormentes enquanto"
+    echo "systemd-suspend.service continuar mascarado."
+  else
+    echo "Nada a fazer — já está tudo no lugar."
+  fi
   exit 0
 fi
 
@@ -129,4 +144,8 @@ sudo systemctl enable "${TO_ENABLE[@]}"
 for u in "${TO_ENABLE[@]}"; do ok "$u"; done
 
 say "Pronto."
-echo "Vale no próximo suspend — não precisa reiniciar."
+if [[ $SUSPEND_MASKED -eq 1 ]]; then
+  echo "As units ficam prontas, mas só executarão se o suspend for desmascarado."
+else
+  echo "Vale no próximo suspend — não precisa reiniciar."
+fi

@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+# Observa os dois despertares que importam nesta máquina KDE:
+#
+#   - desbloqueio depois do PowerDevil apagar as telas (caso habitual);
+#   - retorno de um suspend real anunciado pelo systemd-logind.
+#
+# O reparo roda na sessão do usuário porque kscreen-doctor precisa do D-Bus
+# do Plasma. Um hook em /usr/lib/systemd/system-sleep roda como root, cedo
+# demais, enquanto user.slice ainda pode estar congelado.
+
+set -uo pipefail
+
+delay=${FIX_MONITOR_DELAY_SECONDS:-5}
+target=${FIX_MONITOR_TARGET:---top}
+bluetooth_mouse=${FIX_BLUETOOTH_MOUSE:-}
+cooldown=${FIX_MONITOR_COOLDOWN_SECONDS:-30}
+
+if [[ ! "$delay" =~ ^[0-9]+$ || ! "$cooldown" =~ ^[0-9]+$ ]]; then
+    echo "fix-monitor-after-resume: delay e cooldown precisam ser inteiros." >&2
+    exit 2
+fi
+
+logind_events() {
+    dbus-monitor --system \
+        "type='signal',path='/org/freedesktop/login1',interface='org.freedesktop.login1.Manager',member='PrepareForSleep'" \
+        2>/dev/null |
+        while IFS= read -r line; do
+            [[ "$line" == *"boolean false"* ]] && printf '%s\n' resume
+        done
+}
+
+locker_events() {
+    dbus-monitor --session \
+        "type='signal',path='/ScreenSaver',interface='org.freedesktop.ScreenSaver',member='ActiveChanged'" \
+        2>/dev/null |
+        while IFS= read -r line; do
+            case "$line" in
+                *"boolean true"*)  printf '%s\n' lock ;;
+                *"boolean false"*) printf '%s\n' unlock ;;
+            esac
+        done
+}
+
+# Junta os dois buses no mesmo stream. Se qualquer monitor morrer, encerra o
+# outro também; Restart=always sobe um par limpo em vez de deixar meia vigília.
+events() {
+    logind_events &
+    local logind_pid=$!
+    locker_events &
+    local locker_pid=$!
+    trap 'kill "$logind_pid" "$locker_pid" 2>/dev/null || true' EXIT
+    wait -n "$logind_pid" "$locker_pid"
+    return 1
+}
+
+run_fix() {
+    local attempt
+    local -a args
+
+    if [[ "$target" == "--top" ]]; then
+        args=(--top)
+    else
+        args=("$target")
+    fi
+
+    for attempt in 1 2 3; do
+        echo "fix-monitor-after-resume: tentativa $attempt para $target"
+        # $argv pertence ao fish e precisa chegar sem expansão pelo bash.
+        # shellcheck disable=SC2016
+        if /usr/bin/fish -c 'fix-monitor $argv' -- "${args[@]}"; then
+            echo "fix-monitor-after-resume: reparo concluído"
+            return 0
+        fi
+        (( attempt < 3 )) && sleep 3
+    done
+
+    echo "fix-monitor-after-resume: reparo falhou após 3 tentativas" >&2
+    return 1
+}
+
+recover_mouse() {
+    local output
+    local status=0
+
+    [[ -n "$bluetooth_mouse" ]] || return 0
+
+    if [[ ! -x "$HOME/.local/bin/fix-bluetooth-mouse" ]]; then
+        echo "fix-monitor-after-resume: fix-bluetooth-mouse não encontrado" >&2
+        return 1
+    fi
+
+    output=$("$HOME/.local/bin/fix-bluetooth-mouse" "$bluetooth_mouse" 2>&1) || status=$?
+    while IFS= read -r line; do
+        echo "fix-monitor-after-resume: $line"
+    done <<<"$output"
+    return "$status"
+}
+
+recover_after_wake() {
+    sleep "$delay"
+    run_fix || true
+    recover_mouse || true
+}
+
+last_fix=0
+locked_at=0
+
+echo "fix-monitor-after-resume: observando resume e desbloqueio (tela: $target; mouse: ${bluetooth_mouse:-desativado})"
+while IFS= read -r event; do
+    now=$(date +%s)
+
+    if [[ "$event" == lock ]]; then
+        locked_at=$now
+        continue
+    fi
+
+    if (( now - last_fix < cooldown )); then
+        echo "fix-monitor-after-resume: $event ignorado (debounce)"
+        continue
+    fi
+
+    if [[ "$event" == unlock && $locked_at -gt 0 ]]; then
+        echo "fix-monitor-after-resume: desbloqueio após $((now - locked_at))s"
+    else
+        echo "fix-monitor-after-resume: evento $event"
+    fi
+
+    last_fix=$now
+    recover_after_wake
+done < <(events)
+
+exit 1

@@ -65,6 +65,7 @@ um modeset novo e faz o link engatar.
 ```fish
 fix-monitor              # toda tela externa ligada
 fix-monitor HDMI-A-1     # só essa
+fix-monitor --top        # a tela externa mais acima no layout
 fix-monitor --dry-run    # só mostra os comandos
 ```
 
@@ -81,6 +82,34 @@ Na mão, sem a função:
 kscreen-doctor output.HDMI-A-1.mode.1920x1080@60
 kscreen-doctor output.HDMI-A-1.mode.2560x1080@144
 ```
+
+### Remediação automática no wake
+
+Nesta máquina, o Plasma bloqueia a sessão e apaga as telas depois de 30
+minutos. Isso não é um suspend S3: `AutoSuspendAction=0` no PowerDevil e as
+units de suspend estão mascaradas. O evento que acompanha a falha habitual é,
+portanto, o desbloqueio da tela.
+
+`fix-monitor-after-resume.service` roda no `systemd --user` e observa dois
+sinais D-Bus:
+
+- `org.freedesktop.ScreenSaver.ActiveChanged(false)`, no desbloqueio;
+- `org.freedesktop.login1.Manager.PrepareForSleep(false)`, se o suspend real
+  for reabilitado no futuro.
+
+Cinco segundos depois ele chama `fix-monitor HDMI-A-1`. O atraso deixa KWin,
+KScreen e o driver terminarem o hotplug; um debounce de 30 segundos impede
+que resume e unlock dupliquem o reparo. A unit é ligada ao
+`graphical-session.target` pelo próprio chezmoi.
+
+```bash
+systemctl --user status fix-monitor-after-resume.service
+journalctl --user -u fix-monitor-after-resume.service
+```
+
+O hook não fica em `system-sleep`: ali ele rodaria como root, sem o D-Bus do
+KDE, e poderia tentar falar com o KScreen enquanto a sessão do usuário ainda
+está congelada.
 
 ### Antes de culpar o driver
 
@@ -146,7 +175,9 @@ cat /sys/power/mem_sleep
 ```
 
 Habilita `nvidia-suspend.service` e `nvidia-resume.service`. Idempotente, tem
-`--dry-run`, e vale no próximo suspend sem reiniciar.
+`--dry-run`, e vale no próximo suspend sem reiniciar quando o suspend está
+disponível. Se `systemd-suspend.service` estiver mascarado, o script avisa: as
+units ficam habilitadas, mas dormentes até uma futura reativação.
 
 ### Por que hibernate fica de fora
 
@@ -168,8 +199,10 @@ detecta o mask e pula sozinho — numa máquina onde hibernate estiver ativo, el
 inclui a unit.
 
 `nvidia-resume.service` é outra história apesar do nome. Ele pendura em três
-alvos, e um deles é `systemd-suspend.service`, que está vivo. Habilitar não
-liga hibernação nenhuma.
+alvos, inclusive `systemd-suspend.service`. Habilitá-lo não liga o suspend por
+si só; nesta máquina o alvo também está mascarado, então os serviços NVIDIA
+ficam prontos para uma futura reativação, mas não executam no wake de tela que
+o PowerDevil faz hoje.
 
 Resíduo conhecido e inofensivo: o cmdline ainda carrega `resume=UUID=...` e o
 `mkinitcpio.conf` ainda tem o hook `resume`. O initramfs procura imagem, não
