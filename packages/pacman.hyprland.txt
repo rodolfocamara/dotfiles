@@ -1,0 +1,18 @@
+# Stack de desktop do Hyprland — só instala no perfil "hyprland".
+#
+# Espelha o gate que o .chezmoiignore já faz nos configs: .config/hypr/,
+# .config/waybar/, .config/wofi/ e .config/kitty/ também são hyprland-only.
+# Instalar isso numa máquina KDE traz um compositor inteiro que nunca sobe.
+hyprland
+hyprpaper
+hyprlock
+hypridle
+xdg-desktop-portal-hyprland
+waybar
+wofi
+kitty
+
+# Screenshot no wlroots — quem chama é o bind em dot_config/hypr/hyprland.conf.
+# No KDE quem faz esse papel é o spectacle, que já vem no plasma-meta.
+grim
+slurp

@@ -63,7 +63,7 @@ apps/           --> Windows-only (PowerShell, Windows Terminal)
 AppData/        --> %APPDATA%    Windows-only targets (Zed)
 .chezmoitemplates/               shared content included by per-OS targets (Zed)
 etc/            --> /etc/        via scripts/install-etc.sh (not a chezmoi target)
-packages/                        per-OS package lists
+packages/                        per-OS package lists (+ per-profile on Arch)
 scripts/                         setup helpers
 docs/                            guides
 ```

@@ -1,4 +1,9 @@
 # Arch Linux packages (one per line; # comments ignored)
+#
+# Esta lista é a base: vale em qualquer máquina Arch, seja qual for o desktop.
+# O que é de um desktop só mora em packages/pacman.<profile>.txt — o
+# install-packages.linux-arch.sh resolve o perfil e concatena as duas.
+# Ver docs/machine-profiles.md.
 base-devel
 git
 chezmoi
@@ -13,19 +18,9 @@ bat
 eza
 tmux
 neovim
-kitty
-waybar
-wofi
-hyprland
-hyprpaper
-hyprlock
-hypridle
-grim
-slurp
 wl-clipboard
 pipewire
 wireplumber
-xdg-desktop-portal-hyprland
 polkit-kde-agent
 noto-fonts
 noto-fonts-emoji

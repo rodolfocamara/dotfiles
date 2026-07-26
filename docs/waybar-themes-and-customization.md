@@ -152,7 +152,7 @@ No seu `dot_config/waybar/` foi configurado:
 - **Rede, bluetooth, cpu, memória, tray, relógio.**
 - **Power drawer:** grupo que abre ao clicar; dentro: Bloquear (hyprlock), Sair (hyprctl dispatch exit), Reiniciar, Desligar.
 
-**Dependências:** waybar, hyprlock (já no seu pacman.txt). Para o taskbar funcionar, o Waybar precisa ter suporte a `wlr/taskbar` (normal no Hyprland).
+**Dependências:** waybar, hyprlock (já no seu `packages/pacman.hyprland.txt`). Para o taskbar funcionar, o Waybar precisa ter suporte a `wlr/taskbar` (normal no Hyprland).
 
 Depois de aplicar com chezmoi, reinicie o Waybar (Super+Shift+R no Hyprland ou `killall waybar && waybar &`).
 

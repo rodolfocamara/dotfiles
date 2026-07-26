@@ -22,9 +22,7 @@ if [[ -z "$REPO_ROOT" ]]; then
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 fi
-PACMAN_LIST="$REPO_ROOT/packages/pacman.txt"
 AUR_LIST="$REPO_ROOT/packages/aur.txt"
-[[ ! -f "$PACMAN_LIST" ]] && { echo "Missing $PACMAN_LIST"; exit 1; }
 
 # Log
 LOG="$HOME/.bootstrap.$(date +%F).log"
@@ -37,9 +35,9 @@ curl -fsS --connect-timeout 5 https://archlinux.org >/dev/null || { echo "No int
 # Pacman lock
 while fuser /var/lib/pacman/db.lck >/dev/null 2>&1; do sleep 2; done
 
-# Pacman
-list=$(grep -Ev '^(#|$)' "$PACMAN_LIST")
-[[ -n "$list" ]] && echo "$list" | sudo pacman -Syu --needed --noconfirm -
+# Pacman — delega para não duplicar a resolução de perfil (base +
+# pacman.<profile>.txt). Ver docs/machine-profiles.md.
+CHEZMOI_SOURCE_DIR="$REPO_ROOT" "$REPO_ROOT/scripts/install-packages.linux-arch.sh"
 
 # Yay (only if missing)
 if ! command -v yay >/dev/null 2>&1; then
