@@ -218,12 +218,14 @@ Depois de conectar. O `Domains=~.` global é rota padrão, mas domínios de
 roteamento mais específicos ganham dele — é isso que mantém a divisão:
 
 ```bash
-resolvectl status tun0 | grep -E 'Default Route|DNS Domain'
+resolvectl status tun0 | grep -E 'Protocols|Default Route|DNS Domain'
 resolvectl query --cache=no <dominio-interno>   # -- link: tun0
 resolvectl query --cache=no claude.ai           # -- link: wlan0
 ```
 
 `Default Route: no` no tun0 é o que impede a VPN de virar o DNS de tudo.
+O link também precisa mostrar `-DNSOverTLS`: o DoT continua estrito no DNS
+público, mas os resolvedores privados da VPN não atendem na porta de DoT.
 
 ---
 

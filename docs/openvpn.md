@@ -27,6 +27,7 @@ O que ele garante no perfil:
 | `ipv4/ipv6.never-default yes` | a VPN não vira rota default; só as sub-redes que o servidor empurrar passam por ela |
 | `ipv4/ipv6.dns-search ~dominio` | só esses domínios vão pro DNS da VPN (o `~` = domínio de roteamento) |
 | `ipv4/ipv6.dns-priority 50` | positivo, então o link nunca vira rota default de DNS |
+| `connection.dns-over-tls no` | o DNS privado da VPN não suporta o DoT estrito usado no restante da máquina |
 | `connection.mdns 0` / `llmnr 0` | não anuncia o nome da sua máquina dentro da rede remota |
 
 Nada específico da empresa está no repo — **este repositório é público**. Endpoint, domínios internos e usuário ficam no `.chezmoidata.toml` (por máquina, no `.gitignore`), e o `.ovpn` fica fora do repo:
