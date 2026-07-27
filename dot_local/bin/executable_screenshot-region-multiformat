@@ -9,9 +9,16 @@ output_file="$screenshot_dir/Screenshot_$(date +%Y%m%d_%H%M%S_%3N).png"
 
 mkdir -p "$screenshot_dir"
 
-# Background mode ignores Spectacle's GUI export preferences. Supplying an
-# output path guarantees the save; the provider then offers both PNG and path.
-spectacle --background --region --output "$output_file"
-[[ -s "$output_file" ]] || exit 0
+# Let Spectacle publish the image itself. This happens as part of the capture,
+# so graphical apps can paste immediately and no polling is needed.
+spectacle --background --region --copy-image
 
-exec "$HOME/.local/bin/screenshot-clipboard-provider" "$output_file"
+# Persist the same clipboard PNG and expose only its path through the primary
+# selection for terminals.
+if ! wl-paste --type image/png > "$output_file"; then
+    rm -f -- "$output_file"
+    exit 0
+fi
+[[ -s "$output_file" ]] || { rm -f -- "$output_file"; exit 0; }
+
+wl-copy --primary --type text/plain "$output_file"
