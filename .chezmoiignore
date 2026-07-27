@@ -51,7 +51,9 @@ etc/
 .local/bin/fix-bluetooth-mouse
 .local/bin/screenshot-region-multiformat
 .local/share/screenshot-clipboard/
+.local/share/applications/brave-cadlkienfkclaiaibeoongdcgmdikeeg-Default.desktop
 .local/share/applications/brave-azure-devops-work.desktop
+.local/share/applications/brave-fmpnliohjhemenmnlpbfagaolkdacoja-Default.desktop
 .local/share/applications/brave-outlook-work.desktop
 .local/share/applications/brave-teams-work.desktop
 .local/share/applications/display-brightness-cycle.desktop

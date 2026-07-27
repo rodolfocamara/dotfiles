@@ -4,6 +4,8 @@ set -euo pipefail
 {{ if and (eq .chezmoi.os "linux") (eq $profile "kde") }}
 # screenshot launcher: {{ include "dot_local/share/applications/screenshot-region-multiformat.desktop.tmpl" | sha256sum }}
 # brightness launcher: {{ include "dot_local/share/applications/display-brightness-cycle.desktop.tmpl" | sha256sum }}
+# ChatGPT launcher: {{ include "dot_local/share/applications/brave-cadlkienfkclaiaibeoongdcgmdikeeg-Default.desktop.tmpl" | sha256sum }}
+# Claude launcher: {{ include "dot_local/share/applications/brave-fmpnliohjhemenmnlpbfagaolkdacoja-Default.desktop.tmpl" | sha256sum }}
 
 command -v kbuildsycoca6 >/dev/null || exit 0
 command -v busctl >/dev/null || exit 0

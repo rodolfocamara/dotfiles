@@ -63,6 +63,16 @@ install_etc() {
 say "Instalando arquivos de sistema a partir de $REPO"
 [[ $DRY -eq 1 ]] && echo "(dry-run — nada será escrito)"
 
+# ── Brave: Memory Saver balanceado ──────────────────────────────
+# Políticas do Chromium valem para todos os user-data-dir do Brave. Teams e
+# Outlook ficam fora do descarte para preservar chamadas e notificações.
+if command -v brave >/dev/null; then
+  install_etc "$REPO/etc/brave/policies/managed/memory-saver.json" \
+              /etc/brave/policies/managed/memory-saver.json 644 root:root
+else
+  skip "/etc/brave/policies/managed/memory-saver.json — Brave não instalado"
+fi
+
 # ── DNS over TLS ─────────────────────────────────────────────────
 # Só onde o systemd-resolved é quem resolve de fato. No WSL quem gera o
 # /etc/resolv.conf é o próprio WSL, então o arquivo ficaria inerte e só
