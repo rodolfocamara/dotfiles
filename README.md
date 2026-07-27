@@ -221,6 +221,25 @@ Restart Brave fully afterwards — the host list is read at browser startup. The
 desktop app also has to stay running (tray), or there is no socket to talk to.
 See [docs/bitwarden-brave.md](docs/bitwarden-brave.md).
 
+## Battery charge cap (Legion / IdeaPad)
+
+This is not a ThinkPad: there is no `charge_control_end_threshold`, so there is
+no "stop at 80%". The EC offers an on/off conservation mode with a
+firmware-defined cap, exposed by `ideapad_laptop` as `conservation_mode`.
+
+A udev rule re-applies it on every boot and hands the attribute to `wheel`, so
+toggling needs no sudo:
+
+```bash
+battery-conservation           # state + health + cycle count
+battery-conservation off       # lasts until the next boot, by design
+```
+
+Installed by `./scripts/install-etc.sh` (skipped on machines without the
+attribute). See [docs/battery.md](docs/battery.md) — it also records why the
+popular AUR Legion toolkit is a trap (it blacklists the very driver that makes
+this work) and what the serious alternative would buy you.
+
 ## Useful flags
 
 ```bash

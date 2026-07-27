@@ -73,6 +73,28 @@ else
   skip "/etc/brave/policies/managed/memory-saver.json — Brave não instalado"
 fi
 
+# ── Teto de carga da bateria (Lenovo IdeaPad/Legion) ─────────────
+# Só faz sentido onde o ideapad_laptop expõe conservation_mode. Em ThinkPad o
+# caminho é outro (charge_control_end_threshold, com percentual escolhido), e
+# em máquina sem hardware Lenovo o atributo não existe. Ver docs/battery.md.
+CONSERVATION_NODE="$(compgen -G '/sys/bus/platform/drivers/ideapad_acpi/*/conservation_mode' | head -1 || true)"
+if [[ -n "$CONSERVATION_NODE" ]]; then
+  install_etc "$REPO/etc/udev/rules.d/90-ideapad-conservation.rules" \
+              /etc/udev/rules.d/90-ideapad-conservation.rules 644 root:root
+  # Aplica agora sem esperar reboot: recarrega as regras e reemite o evento
+  # só deste device — `udevadm trigger` sem alvo reprocessaria a máquina toda.
+  CONSERVATION_DEVICE="$(dirname "$(readlink -f "$CONSERVATION_NODE")")"
+  if [[ $DRY -eq 1 ]]; then
+    printf '  udevadm control --reload; udevadm trigger --action=add %s\n' \
+           "$CONSERVATION_DEVICE"
+  else
+    sudo udevadm control --reload
+    sudo udevadm trigger --action=add "$CONSERVATION_DEVICE"
+  fi
+else
+  skip "/etc/udev/rules.d/90-ideapad-conservation.rules — sem conservation_mode nesta máquina"
+fi
+
 # ── DNS over TLS ─────────────────────────────────────────────────
 # Só onde o systemd-resolved é quem resolve de fato. No WSL quem gera o
 # /etc/resolv.conf é o próprio WSL, então o arquivo ficaria inerte e só

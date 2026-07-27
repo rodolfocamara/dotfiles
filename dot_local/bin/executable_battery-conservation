@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+#
+# Conservation mode da bateria em Lenovo IdeaPad/Legion.
+#
+# O teto de carga é do firmware e não é ajustável — não existe "80%" aqui, só
+# ligado/desligado. Quem garante que ele volta ligado no boot é a regra
+# etc/udev/rules.d/90-ideapad-conservation.rules, que também dá permissão de
+# escrita ao wheel para este script não precisar de sudo. Ver docs/battery.md.
+#
+#   battery-conservation            estado atual + saúde da bateria
+#   battery-conservation on|off
+#   battery-conservation toggle
+
+set -uo pipefail
+
+readonly battery=/sys/class/power_supply/BAT0
+
+conservation_node() {
+  local -a nodes
+  shopt -s nullglob
+  nodes=(/sys/bus/platform/drivers/ideapad_acpi/*/conservation_mode)
+  shopt -u nullglob
+  ((${#nodes[@]})) || return 1
+  printf '%s\n' "${nodes[0]}"
+}
+
+read_attribute() {
+  local path=$1 value
+  [[ -r "$path" ]] || return 1
+  read -r value < "$path" || return 1
+  printf '%s\n' "$value"
+}
+
+# energy_* em Wh, charge_* em Ah — o kernel expõe um par ou o outro conforme o
+# que a bateria reporta. A razão full/design é adimensional nos dois casos.
+health_percentage() {
+  local unit full design
+  for unit in energy charge; do
+    full=$(read_attribute "$battery/${unit}_full") || continue
+    design=$(read_attribute "$battery/${unit}_full_design") || continue
+    [[ "$full" =~ ^[0-9]+$ && "$design" =~ ^[1-9][0-9]*$ ]] || continue
+    printf '%d\n' "$(((full * 100 + design / 2) / design))"
+    return 0
+  done
+  return 1
+}
+
+notify() {
+  local message=$1
+  command -v notify-send > /dev/null || return 0
+  notify-send --app-name='Bateria' --expire-time=4000 \
+    --hint=string:x-canonical-private-synchronous:battery-conservation \
+    'Conservation mode' "$message"
+}
+
+report() {
+  local node=$1 mode capacity status health cycles
+  mode=$(read_attribute "$node") || return 1
+
+  if [[ "$mode" == 1 ]]; then
+    printf 'Conservation mode: \033[32mligado\033[0m (carga limitada pelo EC)\n'
+  else
+    printf 'Conservation mode: \033[33mdesligado\033[0m (carrega até 100%%)\n'
+  fi
+
+  capacity=$(read_attribute "$battery/capacity") \
+    && status=$(read_attribute "$battery/status") \
+    && printf 'Bateria:           %s%% (%s)\n' "$capacity" "$status"
+
+  health=$(health_percentage) \
+    && printf 'Saúde:             %s%% da capacidade de fábrica\n' "$health"
+
+  cycles=$(read_attribute "$battery/cycle_count") \
+    && [[ "$cycles" != 0 ]] \
+    && printf 'Ciclos:            %s\n' "$cycles"
+
+  return 0
+}
+
+write_mode() {
+  local node=$1 wanted=$2 current
+  current=$(read_attribute "$node") || return 1
+
+  if [[ "$current" == "$wanted" ]]; then
+    report "$node"
+    return 0
+  fi
+
+  if ! printf '%s\n' "$wanted" > "$node" 2> /dev/null; then
+    printf 'Sem permissão de escrita em %s\n' "$node" >&2
+    printf 'Instale a regra de udev: ./scripts/install-etc.sh\n' >&2
+    return 1
+  fi
+
+  if [[ "$wanted" == 1 ]]; then
+    notify 'Ligado — carga limitada pelo firmware.'
+  else
+    notify 'Desligado até o próximo boot — vai carregar até 100%.'
+  fi
+  report "$node"
+}
+
+usage() {
+  printf 'Usage: %s [status | on | off | toggle]\n' "${0##*/}" >&2
+}
+
+main() {
+  local node current
+
+  if ! node=$(conservation_node); then
+    printf 'conservation_mode não existe nesta máquina.\n' >&2
+    printf 'Precisa do driver ideapad_laptop (Lenovo IdeaPad/Legion).\n' >&2
+    return 1
+  fi
+
+  case "${1:-status}" in
+    status) report "$node" ;;
+    on) write_mode "$node" 1 ;;
+    off) write_mode "$node" 0 ;;
+    toggle)
+      current=$(read_attribute "$node") || return 1
+      write_mode "$node" "$((1 - current))"
+      ;;
+    *)
+      usage
+      return 2
+      ;;
+  esac
+}
+
+main "$@"

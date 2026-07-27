@@ -1,0 +1,30 @@
+# Teto de carga da bateria — Lenovo IdeaPad/Legion (driver ideapad_laptop).
+#
+# Este notebook não é ThinkPad. Não existe charge_control_end_threshold aqui,
+# então não dá para escolher "pare em 80%": o que o EC oferece é um liga/desliga
+# (conservation mode) com o teto definido pelo firmware. O ideapad_laptop expõe
+# esse bit como conservation_mode — é o mesmo estado que aparece na API padrão
+# em /sys/class/power_supply/BAT0/charge_types como "Long_Life".
+#
+# Duas coisas acontecem nesta regra:
+#
+#   1. ATTR{conservation_mode}="1" reaplica o modo toda vez que o device
+#      aparece — boot, e também rmmod/modprobe do ideapad_laptop. O EC costuma
+#      guardar o estado sozinho, mas "costuma" não é garantia: um reset da BIOS
+#      devolve o padrão de fábrica (carregar até 100% e segurar lá, que é
+#      justamente o que acelera a degradação) e nada avisa. O custo de reaplicar
+#      é zero; o custo de descobrir seis meses depois não é.
+#
+#   2. chgrp/chmod deixam o grupo wheel escrever no atributo, para o
+#      `battery-conservation` alternar sem pedir sudo a cada vez. O escopo é um
+#      bit de política de carga — não há escalação de privilégio pendurada nele.
+#
+# Desligar vale até o próximo boot, e isso é intencional: sair com 100% antes de
+# uma viagem é a exceção, proteger é o default. Ver docs/battery.md.
+#
+#   battery-conservation off
+#
+ACTION=="add|bind", SUBSYSTEM=="platform", DRIVER=="ideapad_acpi", \
+  ATTR{conservation_mode}=="?*", ATTR{conservation_mode}="1", \
+  RUN+="/usr/bin/chgrp wheel /sys$devpath/conservation_mode", \
+  RUN+="/usr/bin/chmod 0664 /sys$devpath/conservation_mode"
