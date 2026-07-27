@@ -14,6 +14,7 @@ Zed via ACP.
 ```
 dot_config/containers/systemd/searxng.container  --> ~/.config/containers/systemd/
 dot_config/searxng/settings.yml                  --> ~/.config/searxng/
+dot_config/searxng/limiter.toml                  --> ~/.config/searxng/
 scripts/setup-searxng.sh                            roda uma vez, é idempotente
 ```
 
@@ -25,7 +26,7 @@ Fora do git, gerado na máquina: `~/.config/searxng/secret.env` (600).
 ~/Repos/dotfiles/scripts/setup-searxng.sh
 ```
 
-O script confere podman, instala os dois arquivos de config (copiando do repo
+O script confere podman, instala os arquivos de config (copiando do repo
 se o `chezmoi apply` ainda não os colocou — não exige chezmoi instalado), liga
 linger, gera o segredo, sobe o serviço, espera a API responder e registra o
 MCP em `claude-personal` e `claude-work`. Rodar de novo é seguro.
@@ -54,10 +55,11 @@ O entrypoint da imagem faz `chown -R` em `/etc/searxng`. Se você montar o
 teu usuário perde a escrita e o `chezmoi apply` seguinte falha com
 `Permission denied`.
 
-O quadlet monta o **arquivo**, read-only:
+O quadlet monta os **arquivos**, read-only:
 
 ```ini
 Volume=%h/.config/searxng/settings.yml:/etc/searxng/settings.yml:ro
+Volume=%h/.config/searxng/limiter.toml:/etc/searxng/limiter.toml:ro
 ```
 
 Se você já caiu nessa, o conserto é desfazer o chown de dentro do namespace

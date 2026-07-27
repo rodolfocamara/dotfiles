@@ -14,6 +14,23 @@ journal do BlueZ registrar `Failed to set mode: Busy`.
 Não remova o dispositivo nesse caso. Isso descarta um bond válido e obriga a
 segurar o botão Easy-Switch para parear novamente.
 
+## Evitar discovery contínuo do KDE Connect
+
+O KDE Connect 25.12–26.04 tem uma regressão no toggle do backend Bluetooth:
+ele pode voltar ativo a cada início de sessão e manter discovery recorrente.
+Isso compete com o tráfego de input e áudio. O workaround versionado em
+`~/.config/kdeconnect/config` é:
+
+```ini
+[General]
+disabled_providers=AsyncLinkProvider
+```
+
+Somente o transporte Bluetooth do KDE Connect é desligado; o transporte LAN
+continua funcionando. Não use `kdeconnect-cli --disable-backend Bluetooth`
+nessas versões: o teardown também pode derrubar o daemon. O upstream marcou o
+conserto para 26.08: <https://bugs.kde.org/show_bug.cgi?id=516170>.
+
 ## Recuperação manual
 
 ```bash

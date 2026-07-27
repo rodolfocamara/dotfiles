@@ -196,6 +196,13 @@ even though the driver was told to preserve it.
 See [docs/nvidia-displays.md](docs/nvidia-displays.md) — it also covers how to
 tell the two apart with `ddcutil` before touching anything.
 
+After Limine/Snapper package upgrades, migrate the deprecated enrollment
+commands to the package-provided pre/post hooks with:
+
+```bash
+./scripts/setup-limine-snapper.sh
+```
+
 ## Useful flags
 
 ```bash

@@ -51,6 +51,7 @@ Hyprland numa máquina onde ele ainda não foi instalado).
 | Alvo | Regra |
 |---|---|
 | `.config/hypr/`, `.config/waybar/`, `.config/wofi/`, `.config/kitty/` | só no perfil `hyprland` |
+| `.config/kdeconnect/config` e reparo automático de wake | só no perfil `kde` |
 | `packages/pacman.hyprland.txt` | só no perfil `hyprland` |
 | `.wslconfig` | só no Windows — quem lê é o host, em `%USERPROFILE%\.wslconfig` |
 | `etc/wsl.conf` | só dentro do WSL |

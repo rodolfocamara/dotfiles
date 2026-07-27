@@ -30,6 +30,7 @@ PublishPort=127.0.0.1:8888:8080
 # seguinte falha com Permission denied. Read-only no arquivo, e o container
 # chowna só o diretório interno dele.
 Volume=%h/.config/searxng/settings.yml:/etc/searxng/settings.yml:ro
+Volume=%h/.config/searxng/limiter.toml:/etc/searxng/limiter.toml:ro
 
 EnvironmentFile=%h/.config/searxng/secret.env
 Environment=SEARXNG_BASE_URL=http://127.0.0.1:8888/

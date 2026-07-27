@@ -1,0 +1,8 @@
+# O bot detection lê este arquivo mesmo com server.limiter=false. Como esta
+# instância só escuta em loopback, mantemos os defaults seguros e declaramos
+# apenas os proxies locais confiáveis; Valkey continua desnecessário.
+[botdetection]
+trusted_proxies = [
+  "127.0.0.0/8",
+  "::1",
+]

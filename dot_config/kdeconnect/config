@@ -1,0 +1,8 @@
+[General]
+# KDE Connect 25.12–26.04 não persiste corretamente o toggle do backend
+# Bluetooth. Além do log spam, o discovery contínuo disputa o rádio com mouse
+# e áudio. O id interno que realmente desabilita o backend é este; LAN segue
+# habilitada. Remover depois de atualizar para KDE Connect 26.08 ou mais novo.
+disabled_providers=AsyncLinkProvider
+keyAlgorithm=EC
+name=urarch

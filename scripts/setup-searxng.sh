@@ -19,7 +19,7 @@ say() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 # ── Pré-requisitos ───────────────────────────────────────────────
 command -v podman >/dev/null || { echo "podman não encontrado (pacman -S podman)"; exit 1; }
 
-# Normalmente quem instala esses dois é o `chezmoi apply`. Mas nem toda
+# Normalmente quem instala estes arquivos é o `chezmoi apply`. Mas nem toda
 # máquina tem chezmoi, e o setup não depende dele — se faltar, copia do repo.
 install_from_repo() {
   local src="$REPO/$1" dst="$2"
@@ -31,6 +31,7 @@ install_from_repo() {
 }
 
 install_from_repo dot_config/searxng/settings.yml "$CONF_DIR/settings.yml"
+install_from_repo dot_config/searxng/limiter.toml "$CONF_DIR/limiter.toml"
 install_from_repo dot_config/containers/systemd/searxng.container "$QUADLET_DIR/searxng.container"
 
 # Sem linger o serviço morre quando a sessão fecha.

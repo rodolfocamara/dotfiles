@@ -2,7 +2,15 @@
 # Aplicada em ~/.config/searxng/settings.yml e montada em /etc/searxng no container.
 # Sobe via quadlet: ~/.config/containers/systemd/searxng.container
 
-use_default_settings: true
+use_default_settings:
+  engines:
+    # As duas primeiras exigem Tor e falham ainda durante o carregamento. A
+    # Wikidata tenta inicializar por SPARQL e este IP recebe HTTP 403. Remover
+    # evita tracebacks de engines que já não estavam entregando resultado.
+    remove:
+      - ahmia
+      - torch
+      - wikidata
 
 general:
   debug: false

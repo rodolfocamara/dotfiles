@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+{{- $profile := (index . "profile") | default (ternary "hyprland" "generic" (ne (lookPath "Hyprland") "")) }}
+{{ if and (eq .chezmoi.os "linux") (eq $profile "kde") }}
+# desktop file do pacote: {{ output "sha256sum" "/usr/share/applications/brave-browser.desktop" | trim }}
+
+# O editor de associações do Plasma já deixou uma lista de MIME types sem
+# chave no override local do Brave. Isso faz plasmashell e KWin repetirem
+# "Invalid entry (missing '=')". Recria o override a partir do desktop file
+# atual do pacote e preserva somente o atalho intencional.
+source_file=/usr/share/applications/brave-browser.desktop
+target_dir=${XDG_DATA_HOME:-"$HOME/.local/share"}/applications
+target_file=$target_dir/brave-browser.desktop
+
+[[ -f "$source_file" ]] || exit 0
+mkdir -p "$target_dir"
+temporary_file=$(mktemp --suffix=.desktop "$target_dir/.brave-browser.XXXXXX")
+trap 'rm -f "$temporary_file"' EXIT
+
+# O arquivo do pacote também põe MimeType dentro de Desktop Action, onde a
+# especificação não permite essa chave. Mantém o MimeType do grupo principal,
+# remove os dos grupos de ações e injeta o atalho logo após o cabeçalho.
+awk '
+    /^\[Desktop Entry\]$/ {
+        print
+        print "X-KDE-Shortcuts=Meta+Y"
+        next
+    }
+    /^\[Desktop Action / { in_action = 1 }
+    in_action && /^MimeType=/ { next }
+    { print }
+' "$source_file" > "$temporary_file"
+
+command -v desktop-file-validate >/dev/null && \
+    desktop-file-validate "$temporary_file"
+
+if [[ ! -f "$target_file" ]] || ! cmp -s "$temporary_file" "$target_file"; then
+    install -m 0644 "$temporary_file" "$target_file"
+    command -v update-desktop-database >/dev/null && \
+        update-desktop-database "$target_dir"
+    echo "refresh-brave-desktop: override local atualizado"
+fi
+{{ end }}
