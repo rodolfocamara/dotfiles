@@ -1,0 +1,25 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Outlook (Work)
+Comment=Outlook PWA no perfil Work do Brave
+Terminal=false
+Exec=/usr/bin/brave --user-data-dir={{ .chezmoi.homeDir }}/.config/BraveSoftware/Brave-Browser-Work --profile-directory=Default --app-id=faolnafnngnfdaknnbpnkhgohbobgegn %U
+Icon={{ .chezmoi.homeDir }}/.config/BraveSoftware/Brave-Browser-Work/Default/Web Applications/Manifest Resources/faolnafnngnfdaknnbpnkhgohbobgegn/Icons/256.png
+StartupWMClass=brave-faolnafnngnfdaknnbpnkhgohbobgegn-Default
+Categories=Office;Email;
+MimeType=x-scheme-handler/mailto;
+Actions=Calendar;Compose;NewEvent;
+StartupNotify=true
+
+[Desktop Action Calendar]
+Name=Abrir calendário
+Exec=/usr/bin/brave --user-data-dir={{ .chezmoi.homeDir }}/.config/BraveSoftware/Brave-Browser-Work --profile-directory=Default --app-id=faolnafnngnfdaknnbpnkhgohbobgegn --app-launch-url-for-shortcuts-menu-item=https://outlook.office.com/calendar
+
+[Desktop Action Compose]
+Name=Nova mensagem
+Exec=/usr/bin/brave --user-data-dir={{ .chezmoi.homeDir }}/.config/BraveSoftware/Brave-Browser-Work --profile-directory=Default --app-id=faolnafnngnfdaknnbpnkhgohbobgegn --app-launch-url-for-shortcuts-menu-item=https://outlook.office.com/mail/deeplink/compose
+
+[Desktop Action NewEvent]
+Name=Novo evento
+Exec=/usr/bin/brave --user-data-dir={{ .chezmoi.homeDir }}/.config/BraveSoftware/Brave-Browser-Work --profile-directory=Default --app-id=faolnafnngnfdaknnbpnkhgohbobgegn --app-launch-url-for-shortcuts-menu-item=https://outlook.office.com/calendar/deeplink/compose

@@ -48,6 +48,9 @@ etc/
 .config/systemd/user/graphical-session.target.wants/fix-monitor-after-resume.service
 .local/bin/fix-monitor-after-resume
 .local/bin/fix-bluetooth-mouse
+.local/share/applications/brave-azure-devops-work.desktop
+.local/share/applications/brave-outlook-work.desktop
+.local/share/applications/brave-teams-work.desktop
 {{ end }}
 
 # Ignore Windows-only directories on Linux/macOS.
