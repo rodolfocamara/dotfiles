@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+{{ if eq .chezmoi.os "linux" }}
+{{- $nmh := "NativeMessagingHosts/com.8bit.bitwarden.json" }}
+{{- $sources := printf "%s/.config/google-chrome/%s %s/.config/chromium/%s %s/.config/microsoft-edge/%s" .chezmoi.homeDir $nmh .chezmoi.homeDir $nmh .chezmoi.homeDir $nmh }}
+# manifest de origem: {{ output "sh" "-c" (printf "cat %s 2>/dev/null | sha256sum | cut -d' ' -f1" $sources) | trim }}
+
+# O app do Bitwarden escreve o manifest de Native Messaging só nos navegadores
+# que ele conhece. No Linux, o getLinuxNMHS() do app.asar lista Firefox, Chrome,
+# Chromium e Edge — Brave não está lá, e o Brave não lê o diretório do Chrome.
+# Sem manifest, connectNative("com.8bit.bitwarden") falha e a extensão pede a
+# senha mestra toda vez, mesmo com o desktop destravado ao lado.
+#
+# Copiar em vez de versionar um JSON pronto: o "path" aponta pro proxy do
+# pacote (/usr/lib/bitwarden/desktop_proxy em instalação nativa, outro caminho
+# em flatpak) e "allowed_origins" muda quando o Bitwarden publica novos IDs de
+# extensão. Derivar do que o próprio app escreveu segue esses dois de graça.
+brave_root=$HOME/.config/BraveSoftware/Brave-Browser
+target_dir=$brave_root/NativeMessagingHosts
+target_file=$target_dir/com.8bit.bitwarden.json
+
+# Brave não instalado nesta máquina: nada a fazer.
+[[ -d "$brave_root" ]] || exit 0
+
+source_file=""
+for browser_dir in google-chrome chromium microsoft-edge; do
+    candidate=$HOME/.config/$browser_dir/NativeMessagingHosts/com.8bit.bitwarden.json
+    if [[ -f "$candidate" ]]; then
+        source_file=$candidate
+        break
+    fi
+done
+
+if [[ -z "$source_file" ]]; then
+    echo "bitwarden-brave: nenhum manifest de origem encontrado — abra o app do" >&2
+    echo "  Bitwarden, ligue Configurações > Integração com navegador e reaplique" >&2
+    exit 0
+fi
+
+if [[ ! -f "$target_file" ]] || ! cmp -s "$source_file" "$target_file"; then
+    install -Dm0644 "$source_file" "$target_file"
+    echo "bitwarden-brave: ponte instalada a partir de $source_file"
+fi
+
+# Nome antigo do host, de versões anteriores do desktop. Hoje só a extensão do
+# Firefox fala com "com.bitwarden.desktop"; no Brave é lixo que dá a impressão
+# de que a integração está configurada quando não está.
+legacy_file=$target_dir/com.bitwarden.desktop.json
+if [[ -f "$legacy_file" ]]; then
+    rm -f "$legacy_file"
+    echo "bitwarden-brave: manifest legado com.bitwarden.desktop.json removido"
+fi
+{{ end }}

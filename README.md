@@ -203,6 +203,24 @@ commands to the package-provided pre/post hooks with:
 ./scripts/setup-limine-snapper.sh
 ```
 
+## Bitwarden desktop ↔ Brave (Linux)
+
+The desktop app writes the Native Messaging manifest only for Firefox, Chrome,
+Chromium and Edge — Brave is not on its Linux list, and no Chromium browser
+reads another one's `NativeMessagingHosts/`. Result: the extension keeps asking
+for the master password even with the desktop app unlocked next to it.
+
+`chezmoi apply` copies the manifest the app itself wrote into Brave's directory,
+so `path` and `allowed_origins` follow Bitwarden upgrades on their own.
+
+```bash
+cat ~/.config/BraveSoftware/Brave-Browser/NativeMessagingHosts/com.8bit.bitwarden.json
+```
+
+Restart Brave fully afterwards — the host list is read at browser startup. The
+desktop app also has to stay running (tray), or there is no socket to talk to.
+See [docs/bitwarden-brave.md](docs/bitwarden-brave.md).
+
 ## Useful flags
 
 ```bash
