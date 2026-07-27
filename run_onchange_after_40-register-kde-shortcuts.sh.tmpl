@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+{{- $profile := (index . "profile") | default (ternary "hyprland" "generic" (ne (lookPath "Hyprland") "")) }}
+{{ if and (eq .chezmoi.os "linux") (eq $profile "kde") }}
+# screenshot launcher: {{ include "dot_local/share/applications/screenshot-region-multiformat.desktop.tmpl" | sha256sum }}
+# brightness launcher: {{ include "dot_local/share/applications/display-brightness-cycle.desktop.tmpl" | sha256sum }}
+
+command -v kbuildsycoca6 >/dev/null || exit 0
+command -v busctl >/dev/null || exit 0
+
+kbuildsycoca6 >/dev/null 2>&1
+busctl --user status org.kde.kglobalaccel >/dev/null 2>&1 || exit 0
+
+# Keep the package-owned Spectacle actions, but reserve Meta+Shift+S for the
+# launcher that saves and publishes the multi-format clipboard.
+busctl --user call \
+    org.kde.kglobalaccel /kglobalaccel org.kde.KGlobalAccel setShortcut \
+    'asaiu' 4 org.kde.spectacle.desktop _launch Spectacle 'Launch Spectacle' \
+    1 16777225 4 >/dev/null
+busctl --user call \
+    org.kde.kglobalaccel /kglobalaccel org.kde.KGlobalAccel setShortcut \
+    'asaiu' 4 org.kde.spectacle.desktop RectangularRegionScreenShot Spectacle 'Capture Rectangular Region' \
+    1 318767113 4 >/dev/null
+busctl --user call \
+    org.kde.kglobalaccel /kglobalaccel org.kde.KGlobalAccel setShortcut \
+    'asaiu' 4 screenshot-region-multiformat.desktop _launch 'Screenshot Region' 'Screenshot Region' \
+    1 301989971 4 >/dev/null
+busctl --user call \
+    org.kde.kglobalaccel /kglobalaccel org.kde.KGlobalAccel setShortcut \
+    'asaiu' 4 display-brightness-cycle.desktop _launch 'Cycle Display Brightness' 'Cycle Display Brightness' \
+    1 218103827 4 >/dev/null
+{{ end }}

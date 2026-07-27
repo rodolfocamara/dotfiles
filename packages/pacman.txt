@@ -19,6 +19,7 @@ eza
 tmux
 neovim
 wl-clipboard
+wayland-protocols
 pipewire
 wireplumber
 polkit-kde-agent

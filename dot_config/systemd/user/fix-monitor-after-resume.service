@@ -1,8 +1,8 @@
 [Unit]
-Description=Repair the display and Bluetooth mouse after screen wake or resume
+Description=Repair display, brightness, and Bluetooth mouse after screen wake or resume
 Documentation=file://%h/Repos/dotfiles/docs/nvidia-displays.md file://%h/Repos/dotfiles/docs/bluetooth-mouse.md
 PartOf=graphical-session.target
-After=graphical-session.target
+After=graphical-session.target plasma-powerdevil.service
 ConditionEnvironment=XDG_CURRENT_DESKTOP=KDE
 
 [Service]
@@ -10,7 +10,9 @@ Type=simple
 Environment=FIX_MONITOR_TARGET=HDMI-A-1
 Environment=FIX_MONITOR_DELAY_SECONDS=5
 Environment=FIX_BLUETOOTH_MOUSE=DC:8E:F7:60:E6:59
+Environment=DISPLAY_BRIGHTNESS_QUIET=1
 ExecStart=%h/.local/bin/fix-monitor-after-resume
+ExecStartPost=-%h/.local/bin/display-brightness-cycle restore
 Restart=always
 RestartSec=3
 

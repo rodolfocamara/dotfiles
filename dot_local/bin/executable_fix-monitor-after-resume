@@ -96,9 +96,25 @@ recover_mouse() {
     return "$status"
 }
 
+restore_brightness() {
+    if [[ ! -x "$HOME/.local/bin/display-brightness-cycle" ]]; then
+        return 0
+    fi
+
+    if DISPLAY_BRIGHTNESS_QUIET=1 \
+        "$HOME/.local/bin/display-brightness-cycle" restore; then
+        echo "fix-monitor-after-resume: brilho sincronizado"
+        return 0
+    fi
+
+    echo "fix-monitor-after-resume: falha ao sincronizar brilho" >&2
+    return 1
+}
+
 recover_after_wake() {
     sleep "$delay"
     run_fix || true
+    restore_brightness || true
     recover_mouse || true
 }
 

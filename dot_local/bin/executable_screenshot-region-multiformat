@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+pictures_dir=$(xdg-user-dir PICTURES 2>/dev/null || true)
+[[ -n "$pictures_dir" ]] || pictures_dir="$HOME/Pictures"
+screenshot_dir="$pictures_dir/Screenshots"
+output_file="$screenshot_dir/Screenshot_$(date +%Y%m%d_%H%M%S_%3N).png"
+
+mkdir -p "$screenshot_dir"
+
+# Background mode ignores Spectacle's GUI export preferences. Supplying an
+# output path guarantees the save; the provider then offers both PNG and path.
+spectacle --background --region --output "$output_file"
+[[ -s "$output_file" ]] || exit 0
+
+exec "$HOME/.local/bin/screenshot-clipboard-provider" "$output_file"

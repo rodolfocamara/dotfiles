@@ -46,11 +46,16 @@ etc/
 .config/kdeconnect/config
 .config/systemd/user/fix-monitor-after-resume.service
 .config/systemd/user/graphical-session.target.wants/fix-monitor-after-resume.service
+.local/bin/display-brightness-cycle
 .local/bin/fix-monitor-after-resume
 .local/bin/fix-bluetooth-mouse
+.local/bin/screenshot-region-multiformat
+.local/share/screenshot-clipboard/
 .local/share/applications/brave-azure-devops-work.desktop
 .local/share/applications/brave-outlook-work.desktop
 .local/share/applications/brave-teams-work.desktop
+.local/share/applications/display-brightness-cycle.desktop
+.local/share/applications/screenshot-region-multiformat.desktop
 {{ end }}
 
 # Ignore Windows-only directories on Linux/macOS.
