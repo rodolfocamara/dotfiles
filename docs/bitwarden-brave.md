@@ -41,12 +41,31 @@ navegador — cada um só olha o próprio perfil. Então o manifest nunca chega 
 Conferido na versão 2026.3.1 do pacote `bitwarden`. Vale para instalação
 nativa, flatpak ou snap: o que muda é o caminho do proxy, não a lista.
 
+## Um manifest por data-dir, não um só
+
+Os PWAs de trabalho não rodam no Brave normal. Eles sobem com
+`--user-data-dir=~/.config/BraveSoftware/Brave-Browser-Work`, que é uma árvore
+de dados inteiramente separada — extensões próprias, cookies próprios e
+`NativeMessagingHosts/` próprio.
+
+Consequência prática: instalar o manifest só em `Brave-Browser/` conserta o
+Brave pessoal e deixa o do trabalho exatamente como estava. A extensão do
+trabalho segue pedindo a senha mestra enquanto a pessoal destrava pelo desktop,
+e a diferença entre as duas não aparece em lugar nenhum da UI.
+
+```bash
+ls ~/.config/BraveSoftware/Brave-Browser*/NativeMessagingHosts/com.8bit.bitwarden.json
+```
+
+Tem que listar um por data-dir.
+
 ## O que o repo faz
 
 `run_onchange_after_60-bridge-bitwarden-brave.sh.tmpl` copia o manifest que o
 próprio Bitwarden escreveu (Chrome, Chromium ou Edge, o primeiro que existir)
-para o diretório do Brave, e apaga o `com.bitwarden.desktop.json` legado, que é
-o nome antigo do host e hoje só serve pro Firefox.
+para **cada** `~/.config/BraveSoftware/Brave-Browser*`, e apaga o
+`com.bitwarden.desktop.json` legado em cada um — nome antigo do host, hoje só
+usado pela extensão do Firefox.
 
 Copiar em vez de versionar um JSON pronto é intencional. O manifest carrega dois
 valores que não são estáveis:

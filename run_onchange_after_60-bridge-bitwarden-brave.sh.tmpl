@@ -15,12 +15,17 @@ set -euo pipefail
 # pacote (/usr/lib/bitwarden/desktop_proxy em instalação nativa, outro caminho
 # em flatpak) e "allowed_origins" muda quando o Bitwarden publica novos IDs de
 # extensão. Derivar do que o próprio app escreveu segue esses dois de graça.
-brave_root=$HOME/.config/BraveSoftware/Brave-Browser
-target_dir=$brave_root/NativeMessagingHosts
-target_file=$target_dir/com.8bit.bitwarden.json
+#
+# Um por data-dir, não um só. Os PWAs de trabalho rodam com --user-data-dir
+# apontando pra Brave-Browser-Work, que é uma árvore de dados separada: extensão
+# própria e NativeMessagingHosts próprio. Tratar só Brave-Browser deixa a
+# extensão do trabalho pedindo a senha mestra enquanto a pessoal destrava.
+shopt -s nullglob
+brave_roots=("$HOME"/.config/BraveSoftware/Brave-Browser*)
+shopt -u nullglob
 
 # Brave não instalado nesta máquina: nada a fazer.
-[[ -d "$brave_root" ]] || exit 0
+[[ ${#brave_roots[@]} -gt 0 ]] || exit 0
 
 source_file=""
 for browser_dir in google-chrome chromium microsoft-edge; do
@@ -37,17 +42,23 @@ if [[ -z "$source_file" ]]; then
     exit 0
 fi
 
-if [[ ! -f "$target_file" ]] || ! cmp -s "$source_file" "$target_file"; then
-    install -Dm0644 "$source_file" "$target_file"
-    echo "bitwarden-brave: ponte instalada a partir de $source_file"
-fi
+for brave_root in "${brave_roots[@]}"; do
+    [[ -d "$brave_root" ]] || continue
+    target_dir=$brave_root/NativeMessagingHosts
+    target_file=$target_dir/com.8bit.bitwarden.json
 
-# Nome antigo do host, de versões anteriores do desktop. Hoje só a extensão do
-# Firefox fala com "com.bitwarden.desktop"; no Brave é lixo que dá a impressão
-# de que a integração está configurada quando não está.
-legacy_file=$target_dir/com.bitwarden.desktop.json
-if [[ -f "$legacy_file" ]]; then
-    rm -f "$legacy_file"
-    echo "bitwarden-brave: manifest legado com.bitwarden.desktop.json removido"
-fi
+    if [[ ! -f "$target_file" ]] || ! cmp -s "$source_file" "$target_file"; then
+        install -Dm0644 "$source_file" "$target_file"
+        echo "bitwarden-brave: ponte instalada em ${brave_root##*/}"
+    fi
+
+    # Nome antigo do host, de versões anteriores do desktop. Hoje só a extensão
+    # do Firefox fala com "com.bitwarden.desktop"; no Brave é lixo que dá a
+    # impressão de que a integração está configurada quando não está.
+    legacy_file=$target_dir/com.bitwarden.desktop.json
+    if [[ -f "$legacy_file" ]]; then
+        rm -f "$legacy_file"
+        echo "bitwarden-brave: manifest legado removido em ${brave_root##*/}"
+    fi
+done
 {{ end }}
