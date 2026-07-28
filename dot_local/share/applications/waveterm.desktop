@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=Wave
+GenericName=Graphical Terminal Workspace
+Comment=Terminal, web previews, editors, and AI workspaces
+Exec=/opt/Wave/waveterm --enable-features UseOzonePlatform --ozone-platform-hint auto %U
+TryExec=/opt/Wave/waveterm
+Terminal=false
+Type=Application
+Icon=waveterm
+StartupWMClass=Wave
+Keywords=developer;terminal;emulator;preview;web;
+Categories=System;TerminalEmulator;

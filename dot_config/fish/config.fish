@@ -21,6 +21,25 @@ if status is-interactive
     command -q mise; and mise activate fish | source
     command -q direnv; and direnv hook fish | source
 
+    # Wave's sidebar follows the focused shell's path. Foreground agents can
+    # temporarily replace it; the next prompt restores the path automatically.
+    function __wave_sync_path_title --on-event fish_prompt
+        test "$TERM_PROGRAM" = waveterm; or return
+        test "$WAVETERM" = 1; or return
+        test -x "$HOME/.local/bin/codex-terminal-title"; or return
+
+        set -l title "$PWD"
+        if test "$PWD" = "$HOME"
+            set title '~'
+        else if string match -q -- "$HOME/*" "$PWD"
+            set title '~/'(string replace -- "$HOME/" '' "$PWD")
+        end
+
+        command "$HOME/.local/bin/codex-terminal-title" wave-path-title "$title" \
+            >/dev/null 2>&1 &
+        disown $last_pid
+    end
+
     abbr -a docker podman
     abbr -a dc podman-compose
     abbr -a y yazi

@@ -1,0 +1,258 @@
+#!/usr/bin/env bash
+# Keep the title of the current terminal in sync with the Codex chat name.
+
+set -euo pipefail
+
+find_codex_parent() {
+  local pid="$PPID" comm
+  local _depth
+
+  for _depth in {1..12}; do
+    [[ "$pid" =~ ^[0-9]+$ ]] || return 1
+    [[ -r "/proc/$pid/comm" ]] || return 1
+    read -r comm < "/proc/$pid/comm"
+    if [[ "$comm" == "codex" ]]; then
+      printf '%s\n' "$pid"
+      return 0
+    fi
+    pid="$(awk '/^PPid:/ { print $2 }' "/proc/$pid/status")"
+  done
+
+  return 1
+}
+
+valid_session_id() {
+  [[ "$1" =~ ^[0-9A-Fa-f-]+$ ]]
+}
+
+unit_for() {
+  printf 'codex-terminal-title-%s.service\n' "$1"
+}
+
+stop_watcher() {
+  local session_id="$1" unit
+
+  valid_session_id "$session_id" || return 0
+  unit="$(unit_for "$session_id")"
+  systemctl --user stop "$unit" >/dev/null 2>&1 || true
+}
+
+read_chat_title() {
+  local session_id="$1" codex_home="$2" db title
+
+  for db in "$codex_home"/state_*.sqlite; do
+    [[ -r "$db" ]] || continue
+    title="$(
+      sqlite3 -readonly -noheader "$db" \
+        "SELECT substr(trim(replace(replace(CASE WHEN name IS NOT NULL AND name <> '' THEN name ELSE title END, char(10), ' '), char(13), ' ')), 1, 120) FROM threads WHERE id = '$session_id';" \
+        2>/dev/null || true
+    )"
+    title="$(printf '%s' "$title" | LC_ALL=C tr -d '\000-\037\177')"
+    if [[ -n "$title" ]]; then
+      printf '%s\n' "$title"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+update_waveterm_tab_title() {
+  local env_source="$1" title="$2" focused_only="${3:-0}"
+
+  python - "$env_source" "$title" "$focused_only" <<'PY'
+import base64
+import json
+import os
+import socket
+import sys
+import uuid
+
+env_source, title, focused_only = sys.argv[1:]
+if env_source == "self":
+    env = dict(os.environ)
+elif env_source.isdecimal():
+    raw_env = open(f"/proc/{env_source}/environ", "rb").read().split(b"\0")
+    env = {}
+    for item in raw_env:
+        if b"=" not in item:
+            continue
+        key, value = item.split(b"=", 1)
+        env[key.decode(errors="ignore")] = value.decode(errors="ignore")
+else:
+    raise SystemExit(2)
+
+if env.get("TERM_PROGRAM") != "waveterm" or env.get("WAVETERM") != "1":
+    raise SystemExit(0)
+
+token = env.get("WAVETERM_JWT", "")
+block_id = env.get("WAVETERM_BLOCKID", "")
+if not token or not block_id:
+    raise SystemExit(0)
+
+payload = token.split(".")[1]
+payload += "=" * (-len(payload) % 4)
+claims = json.loads(base64.urlsafe_b64decode(payload))
+socket_path = claims.get("sock", "")
+if not os.path.isabs(socket_path):
+    raise RuntimeError("Wave supplied a non-absolute socket path")
+
+client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+client.settimeout(3)
+client.connect(socket_path)
+stream = client.makefile("rwb", buffering=0)
+
+def rpc(command, data, route=None):
+    request_id = str(uuid.uuid4())
+    message = {
+        "command": command,
+        "reqid": request_id,
+        "data": data,
+        "timeout": 2000,
+    }
+    if route is not None:
+        message["route"] = route
+    stream.write(json.dumps(message, separators=(",", ":")).encode() + b"\n")
+    while True:
+        line = stream.readline()
+        if not line:
+            raise RuntimeError("Wave socket closed before replying")
+        response = json.loads(line)
+        if response.get("resid") != request_id:
+            continue
+        if response.get("error"):
+            raise RuntimeError(response["error"])
+        if not response.get("cont", False):
+            return response.get("data")
+
+rpc("authenticate", token, "$control")
+block_info = rpc("blockinfo", block_id)
+tab_id = block_info.get("tabid", "") if isinstance(block_info, dict) else ""
+if tab_id:
+    if focused_only == "1":
+        focused_block = rpc("getfocusedblockdata", None, f"tab:{tab_id}")
+        if not isinstance(focused_block, dict) or focused_block.get("blockid") != block_id:
+            raise SystemExit(0)
+    rpc("updatetabname", {"args": [tab_id, title]})
+PY
+}
+
+watch_title() {
+  local session_id="$1" codex_pid="$2" tty_path="$3" codex_home="$4"
+  local title last_title=""
+
+  while kill -0 "$codex_pid" 2>/dev/null && [[ -w "$tty_path" ]]; do
+    title="$(read_chat_title "$session_id" "$codex_home" || true)"
+    if [[ -n "$title" && "$title" != "$last_title" ]]; then
+      # OSC 2 is understood by Kitty and captured as terminal_title by Herdr.
+      printf '\033]2;%s\033\134' "$title" > "$tty_path" || break
+      update_waveterm_tab_title "$codex_pid" "$title" || true
+      last_title="$title"
+    fi
+    sleep 1
+  done
+}
+
+start_watcher() {
+  local payload session_id codex_pid tty_path codex_home unit
+
+  payload="$(cat)"
+  session_id="$(jq -r '.session_id // empty' <<< "$payload")"
+  valid_session_id "$session_id" || exit 0
+  codex_pid="$(find_codex_parent || true)"
+  [[ "$codex_pid" =~ ^[0-9]+$ ]] || exit 0
+  tty_path="$(readlink -f "/proc/$codex_pid/fd/0" 2>/dev/null || true)"
+  [[ "$tty_path" == /dev/pts/* || "$tty_path" == /dev/tty* ]] || exit 0
+  [[ -w "$tty_path" ]] || exit 0
+
+  codex_home="${CODEX_HOME:-$HOME/.codex}"
+  unit="$(unit_for "$session_id")"
+  if systemctl --user is-active --quiet "$unit"; then
+    exit 0
+  fi
+
+  systemctl --user reset-failed "$unit" >/dev/null 2>&1 || true
+  systemd-run --user --quiet --collect --unit "$unit" \
+    "$0" watch "$session_id" "$codex_pid" "$tty_path" "$codex_home"
+}
+
+end_watcher() {
+  local payload session_id
+
+  payload="$(cat)"
+  session_id="$(jq -r '.session_id // empty' <<< "$payload")"
+  stop_watcher "$session_id"
+}
+
+install_hooks() {
+  local codex_home hooks_file tmp_file start_command stop_command
+
+  command -v jq >/dev/null || {
+    printf 'codex-terminal-title: jq is required to install hooks\n' >&2
+    exit 1
+  }
+  command -v sqlite3 >/dev/null || {
+    printf 'codex-terminal-title: sqlite3 is required at runtime\n' >&2
+    exit 1
+  }
+
+  codex_home="${CODEX_HOME:-$HOME/.codex}"
+  hooks_file="$codex_home/hooks.json"
+  mkdir -p "$codex_home"
+  if [[ ! -e "$hooks_file" ]]; then
+    printf '{"hooks":{}}\n' > "$hooks_file"
+  fi
+  jq -e 'type == "object" and (.hooks == null or (.hooks | type == "object"))' \
+    "$hooks_file" >/dev/null
+
+  start_command="$HOME/.local/bin/codex-terminal-title start"
+  stop_command="$HOME/.local/bin/codex-terminal-title stop"
+  tmp_file="$(mktemp "$codex_home/hooks.json.tmp.XXXXXX")"
+  trap 'rm -f -- "$tmp_file"' RETURN
+
+  jq --arg start "$start_command" --arg stop "$stop_command" '
+    def without_command($command):
+      map(select(any(.hooks[]?; .command == $command) | not));
+    .hooks = (.hooks // {}) |
+    .hooks.SessionStart = (
+      ((.hooks.SessionStart // []) | without_command($start)) +
+      [{"hooks": [{"type": "command", "command": $start, "timeout": 3}]}]
+    ) |
+    .hooks.SessionEnd = (
+      ((.hooks.SessionEnd // []) | without_command($stop)) +
+      [{"hooks": [{"type": "command", "command": $stop, "timeout": 1}]}]
+    )
+  ' "$hooks_file" > "$tmp_file"
+  chmod 600 "$tmp_file"
+  mv -f -- "$tmp_file" "$hooks_file"
+  trap - RETURN
+}
+
+case "${1:-}" in
+  start)
+    start_watcher
+    ;;
+  stop)
+    end_watcher
+    ;;
+  watch)
+    [[ $# -eq 5 ]] || exit 2
+    shift
+    watch_title "$@"
+    ;;
+  wave-title)
+    [[ $# -eq 3 ]] || exit 2
+    update_waveterm_tab_title "$2" "$3"
+    ;;
+  wave-path-title)
+    [[ $# -eq 2 ]] || exit 2
+    update_waveterm_tab_title self "$2" 1
+    ;;
+  install-hooks)
+    install_hooks
+    ;;
+  *)
+    printf 'Usage: codex-terminal-title {start|stop|install-hooks|wave-path-title TITLE}\n' >&2
+    exit 2
+    ;;
+esac

@@ -110,6 +110,9 @@ scripts/install-packages.windows.ps1
 # fish é o shell de login no Arch/CachyOS. Não existe no Windows nativo; dentro
 # do WSL funciona, e lá o chezmoi enxerga Linux.
 .config/fish/
+.config/waveterm/
+.local/share/applications/waveterm.desktop
+.local/bin/codex-terminal-title
 # SearxNG roda como quadlet rootless em systemd --user; nada disso existe no
 # Windows nativo. No WSL funciona (exige podman instalado).
 .config/containers/

@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+{{ if eq .chezmoi.os "linux" }}
+# title sync: {{ include "dot_local/bin/executable_codex-terminal-title" | sha256sum }}
+"$HOME/.local/bin/codex-terminal-title" install-hooks
+{{ end }}

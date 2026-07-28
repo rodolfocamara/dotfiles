@@ -21,6 +21,8 @@ neovim
 wl-clipboard
 wayland-protocols
 imagemagick
+python
+sqlite
 pipewire
 wireplumber
 polkit-kde-agent
