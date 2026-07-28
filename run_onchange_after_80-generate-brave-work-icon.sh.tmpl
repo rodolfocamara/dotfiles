@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -euo pipefail
+{{ if eq .chezmoi.os "linux" }}
+{{- $source_icon := "/usr/share/icons/hicolor/256x256/apps/brave-desktop.png" }}
+# ícone de origem: {{ output "sh" "-c" (printf "sha256sum %s 2>/dev/null | cut -d' ' -f1 || printf missing" $source_icon) | trim }}
+
+# O Brave do trabalho roda no mesmo binário e no mesmo tema de ícone do
+# pessoal, então as duas janelas ficam idênticas na barra de tarefas. Girar a
+# matiz do ícone do pacote pra azul separa as duas de relance, inclusive em
+# 24px, onde selo ou letrinha viram borrão.
+#
+# Derivar do ícone do pacote em vez de versionar um PNG pronto: se o Brave
+# mudar a arte dele num update, a variante acompanha sozinha. O hash lá em cima
+# é o do arquivo de origem, então esse update dispara a regeração.
+source_icon={{ $source_icon }}
+icon_name=brave-work
+icons_dir=${XDG_DATA_HOME:-"$HOME/.local/share"}/icons/hicolor
+
+[[ -f "$source_icon" ]] || exit 0
+command -v magick >/dev/null || {
+    echo "brave-work-icon: imagemagick não encontrado, ícone não gerado" >&2
+    exit 0
+}
+
+# modulate hue: 100 = sem giro, cada +1 ≈ +1.8°. 200 leva o laranja do Brave
+# pra azul. A saturação sobe um pouco porque o giro lava a cor.
+generated=0
+for size in 16 24 32 48 64 128 256; do
+    target_dir=$icons_dir/${size}x${size}/apps
+    target_file=$target_dir/$icon_name.png
+    mkdir -p "$target_dir"
+
+    temporary_file=$(mktemp "$target_dir/.$icon_name.XXXXXX")
+    magick "$source_icon" -modulate 100,110,200 -resize "${size}x${size}" \
+        PNG32:"$temporary_file"
+
+    if [[ ! -f "$target_file" ]] || ! cmp -s "$temporary_file" "$target_file"; then
+        install -m 0644 "$temporary_file" "$target_file"
+        generated=$((generated + 1))
+    fi
+    rm -f "$temporary_file"
+done
+
+if [[ $generated -gt 0 ]]; then
+    # O cache do tema é opcional: sem ele o ícone ainda resolve, só mais lento.
+    command -v gtk-update-icon-cache >/dev/null &&
+        gtk-update-icon-cache --quiet --force "$icons_dir" 2>/dev/null || true
+    echo "brave-work-icon: $generated tamanho(s) gerados em $icons_dir"
+fi
+{{ end }}

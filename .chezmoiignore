@@ -57,6 +57,7 @@ etc/
 .local/share/applications/brave-fmpnliohjhemenmnlpbfagaolkdacoja-Default.desktop
 .local/share/applications/brave-outlook-work.desktop
 .local/share/applications/brave-teams-work.desktop
+.local/share/applications/brave-work-browser.desktop
 .local/share/applications/display-brightness-cycle.desktop
 .local/share/applications/screenshot-region-multiformat.desktop
 {{ end }}

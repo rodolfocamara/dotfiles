@@ -20,6 +20,7 @@ tmux
 neovim
 wl-clipboard
 wayland-protocols
+imagemagick
 pipewire
 wireplumber
 polkit-kde-agent

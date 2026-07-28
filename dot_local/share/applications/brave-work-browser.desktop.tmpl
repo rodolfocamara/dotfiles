@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Brave (Work — Browser)
+Comment=Brave em modo navegador no perfil Work — pra instalar extensões e gerenciar settings
+Terminal=false
+Exec=/usr/bin/brave --user-data-dir={{ .chezmoi.homeDir }}/.config/BraveSoftware/Brave-Browser-Work --class=brave-work-browser %U
+Icon=brave-work
+StartupWMClass=brave-work-browser
+Categories=Network;WebBrowser;
