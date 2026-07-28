@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Apps (Trabalho)
+Comment=Todas as PWAs instaladas no perfil Work do Brave
+Terminal=false
+Exec=/usr/bin/brave --user-data-dir={{ .chezmoi.homeDir }}/.config/BraveSoftware/Brave-Browser-Work --profile-directory=Default --class=brave-apps-work --app=brave://apps
+Icon=brave-work
+StartupWMClass=brave-apps-work
+Categories=Network;X-Trabalho;

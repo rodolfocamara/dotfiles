@@ -257,6 +257,33 @@ grep -L '^Exec=/usr/bin/brave' ~/.local/share/applications/brave-*.desktop
 
 Empty output means every launcher goes through the wrapper.
 
+## Menu de aplicativos do Brave (KDE)
+
+O Brave gera um `.desktop` por PWA instalada e as agrupa sozinho em "Brave
+Browser Apps", via um `user-chrome-apps.menu` que ele regera a cada instalação.
+Esse arquivo é dele — competir com ele significa brigar com o navegador a cada
+app nova.
+
+O que o repo faz em volta disso:
+
+- **Grupo "Trabalho"** com os lançadores curados do perfil Work. `Categories=`
+  sozinho não cria seção: a spec XDG exige também um `.menu` declarando o
+  submenu e um `.directory` com nome e ícone. Os três estão versionados.
+- **Duplicata some do menu.** Quando um PWA ganha lançador curado aqui, o que o
+  Brave gerou vira entrada repetida. O script detecta por `app-id` presente em
+  mais de um lançador e põe `NoDisplay=true` no gerado — o arquivo continua
+  existindo, então pin na barra de tarefas não quebra.
+- **Cópia na área de trabalho é removida**, mas só quando existe arquivo de
+  mesmo nome em `applications/`. Atalho que exista apenas no desktop é
+  intencional e fica.
+
+Os lançadores **Apps (Trabalho)** e **Apps (Pessoal)** abrem `brave://apps` do
+data-dir correspondente, que lista todas as PWAs daquele perfil.
+
+```bash
+kbuildsycoca6 --menutest | grep Trabalho
+```
+
 ## Useful flags
 
 ```bash

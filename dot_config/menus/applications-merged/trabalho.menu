@@ -1,0 +1,24 @@
+<!DOCTYPE Menu PUBLIC "-//freedesktop//DTD Menu 1.0//EN"
+    "http://www.freedesktop.org/standards/menu-spec/menu-1.0.dtd">
+<!--
+    Grupo "Trabalho" no menu de aplicativos.
+
+    Categories= sozinho não cria seção: a spec XDG exige um .menu declarando o
+    submenu e um .directory com nome e ícone. Este arquivo é o primeiro; o
+    segundo é ~/.local/share/desktop-directories/Trabalho.directory.
+
+    Só entra aqui quem é lançador curado do perfil Work (Categories inclui
+    X-Trabalho). As PWAs que o Brave instala sozinho continuam no grupo
+    "Brave Browser Apps", que o xdg-desktop-menu gera e regera — competir com
+    aquele arquivo significaria brigar com o navegador a cada app instalada.
+-->
+<Menu>
+    <Name>Applications</Name>
+    <Menu>
+        <Name>Trabalho</Name>
+        <Directory>Trabalho.directory</Directory>
+        <Include>
+            <Category>X-Trabalho</Category>
+        </Include>
+    </Menu>
+</Menu>

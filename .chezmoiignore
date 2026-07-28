@@ -58,6 +58,10 @@ etc/
 .local/share/applications/brave-outlook-work.desktop
 .local/share/applications/brave-teams-work.desktop
 .local/share/applications/brave-work-browser.desktop
+.local/share/applications/brave-apps-work.desktop
+.local/share/applications/brave-apps-personal.desktop
+.local/share/desktop-directories/Trabalho.directory
+.config/menus/applications-merged/trabalho.menu
 .local/share/applications/display-brightness-cycle.desktop
 .local/share/applications/screenshot-region-multiformat.desktop
 {{ end }}

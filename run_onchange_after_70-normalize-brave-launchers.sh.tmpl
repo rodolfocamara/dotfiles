@@ -2,7 +2,8 @@
 set -euo pipefail
 {{ if eq .chezmoi.os "linux" }}
 {{- $launchers := printf "%s/.local/share/applications/brave-*.desktop" .chezmoi.homeDir }}
-# lançadores: {{ output "sh" "-c" (printf "grep -h '^Exec=' %s 2>/dev/null | sha256sum | cut -d' ' -f1" $launchers) | trim }}
+{{- $strays := printf "%s/Desktop/brave-*.desktop" .chezmoi.homeDir }}
+# lançadores: {{ output "sh" "-c" (printf "{ grep -h -E '^(Exec|NoDisplay)=' %s; ls -d %s; } 2>/dev/null | sha256sum | cut -d' ' -f1" $launchers $strays) | trim }}
 
 # /usr/bin/brave é um wrapper: ele lê ~/.config/brave-flags.conf, monta a lista
 # de flags e faz exec no binário real. /opt/brave-bin/brave é o binário cru e
@@ -58,6 +59,50 @@ for launcher in "${launchers[@]}"; do
     changed=$((changed + 1))
     echo "brave-launchers: ${launcher##*/} apontado pro wrapper"
 done
+
+# Quando um PWA ganha um lançador curado aqui no repo, o que o Brave gerou
+# sozinho vira entrada repetida no menu, com o mesmo ícone e mesmo destino.
+# Detecta por app-id em vez de lista fixa: um PWA novo que receba lançador
+# curado passa a ser tratado sem precisar mexer neste script.
+#
+# NoDisplay em vez de apagar: o arquivo continua existindo, então nada que
+# esteja fixado na barra de tarefas quebra, e o Brave não fica recriando.
+declare -A app_id_count=()
+for launcher in "${launchers[@]}"; do
+    app_id=$(sed -n 's/^Exec=.*--app-id=\([a-p]\{32\}\).*/\1/p' "$launcher" | head -1)
+    [[ -n "$app_id" ]] && app_id_count[$app_id]=$(( ${app_id_count[$app_id]:-0} + 1 ))
+done
+
+for app_id in "${!app_id_count[@]}"; do
+    (( app_id_count[$app_id] > 1 )) || continue
+    # Só o de nomenclatura gerada pelo Brave é escondido; o curado é o que fica.
+    generated=$applications_dir/brave-$app_id-Default.desktop
+    [[ -f "$generated" ]] || continue
+    grep -q "^NoDisplay=true" "$generated" && continue
+
+    if grep -q "^NoDisplay=" "$generated"; then
+        sed -i "s|^NoDisplay=.*|NoDisplay=true|" "$generated"
+    else
+        sed -i "/^\[Desktop Entry\]/a NoDisplay=true" "$generated"
+    fi
+    changed=$((changed + 1))
+    echo "brave-launchers: ${generated##*/} ocultado (duplica um lançador curado)"
+done
+
+# O Brave também larga cópia dos lançadores na área de trabalho. Só remove a
+# que tem par de mesmo nome em applications/ — atalho que exista apenas no
+# desktop é intencional e não é problema deste script.
+desktop_dir=$(xdg-user-dir DESKTOP 2>/dev/null || printf '%s/Desktop' "$HOME")
+if [[ -d "$desktop_dir" && "$desktop_dir" != "$HOME" ]]; then
+    shopt -s nullglob
+    for stray in "$desktop_dir"/brave-*.desktop; do
+        [[ -f "$applications_dir/${stray##*/}" ]] || continue
+        rm -f "$stray"
+        changed=$((changed + 1))
+        echo "brave-launchers: ${stray##*/} removido da área de trabalho"
+    done
+    shopt -u nullglob
+fi
 
 if [[ $changed -gt 0 ]] && command -v update-desktop-database >/dev/null; then
     update-desktop-database "$applications_dir"
