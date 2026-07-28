@@ -14,7 +14,7 @@ kbuildsycoca6 >/dev/null 2>&1
 busctl --user status org.kde.kglobalaccel >/dev/null 2>&1 || exit 0
 
 # Keep the package-owned Spectacle actions, but reserve Meta+Shift+S for the
-# launcher that saves and publishes the multi-format clipboard.
+# launcher that separates the PNG clipboard from the path selection.
 busctl --user call \
     org.kde.kglobalaccel /kglobalaccel org.kde.KGlobalAccel setShortcut \
     'asaiu' 4 org.kde.spectacle.desktop _launch Spectacle 'Launch Spectacle' \

@@ -51,7 +51,6 @@ etc/
 .local/bin/fix-monitor-after-resume
 .local/bin/fix-bluetooth-mouse
 .local/bin/screenshot-region-multiformat
-.local/share/screenshot-clipboard/
 .local/share/applications/brave-cadlkienfkclaiaibeoongdcgmdikeeg-Default.desktop
 .local/share/applications/brave-azure-devops-work.desktop
 .local/share/applications/brave-fmpnliohjhemenmnlpbfagaolkdacoja-Default.desktop

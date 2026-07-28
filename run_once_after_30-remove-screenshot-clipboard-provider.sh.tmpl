@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+{{- $profile := (index . "profile") | default (ternary "hyprland" "generic" (ne (lookPath "Hyprland") "")) }}
+{{ if and (eq .chezmoi.os "linux") (eq $profile "kde") }}
+data_dir=${XDG_DATA_HOME:-"$HOME/.local/share"}/screenshot-clipboard
+
+rm -f -- "$HOME/.local/bin/screenshot-clipboard-provider"
+rm -f -- "$data_dir/provider.c"
+rmdir -- "$data_dir" 2>/dev/null || true
+{{ end }}

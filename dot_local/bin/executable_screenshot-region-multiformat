@@ -10,7 +10,7 @@ output_file="$screenshot_dir/Screenshot_$(date +%Y%m%d_%H%M%S_%3N).png"
 mkdir -p "$screenshot_dir"
 
 # Let Spectacle publish the image itself. This happens as part of the capture,
-# so graphical apps can paste immediately and no polling is needed.
+# so graphical apps can paste immediately without a custom clipboard provider.
 spectacle --background --region --copy-image
 
 # Persist the same clipboard PNG and expose only its path through the primary
