@@ -240,6 +240,23 @@ attribute). See [docs/battery.md](docs/battery.md) — it also records why the
 popular AUR Legion toolkit is a trap (it blacklists the very driver that makes
 this work) and what the serious alternative would buy you.
 
+## Brave launchers (Linux)
+
+`/usr/bin/brave` is a wrapper: it reads `~/.config/brave-flags.conf`, builds the
+flag list and execs the real binary. `/opt/brave-bin/brave` is that raw binary
+and reads nothing — a launcher pointing there silently loses every flag.
+
+Brave writes the PWA `.desktop` files itself, pointing at its own executable,
+which is always the `/opt` one. So this drifts back every time a PWA is
+reinstalled. `chezmoi apply` rewrites the `Exec=` prefix on every
+`~/.local/share/applications/brave-*.desktop`, keeping the arguments intact.
+
+```bash
+grep -L '^Exec=/usr/bin/brave' ~/.local/share/applications/brave-*.desktop
+```
+
+Empty output means every launcher goes through the wrapper.
+
 ## Useful flags
 
 ```bash

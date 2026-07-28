@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+{{ if eq .chezmoi.os "linux" }}
+{{- $launchers := printf "%s/.local/share/applications/brave-*.desktop" .chezmoi.homeDir }}
+# lançadores: {{ output "sh" "-c" (printf "grep -h '^Exec=' %s 2>/dev/null | sha256sum | cut -d' ' -f1" $launchers) | trim }}
+
+# /usr/bin/brave é um wrapper: ele lê ~/.config/brave-flags.conf, monta a lista
+# de flags e faz exec no binário real. /opt/brave-bin/brave é o binário cru e
+# não lê arquivo nenhum. Quem chama o caminho de /opt perde as flags — hoje
+# --password-store e --enable-features=FedCm.
+#
+# O Brave gera os .desktop dos PWAs sozinho, apontando pro próprio executável,
+# que é sempre o de /opt. Então isso volta a divergir toda vez que um PWA é
+# reinstalado — por isso o hash lá em cima é o das linhas Exec=, e não a versão
+# do pacote: mexeu num lançador, o script roda de novo no próximo apply.
+applications_dir=${XDG_DATA_HOME:-"$HOME/.local/share"}/applications
+raw_binary=/opt/brave-bin/brave
+wrapper=/usr/bin/brave
+
+[[ -d "$applications_dir" ]] || exit 0
+[[ -x "$wrapper" ]] || exit 0
+
+shopt -s nullglob
+launchers=("$applications_dir"/brave-*.desktop)
+shopt -u nullglob
+[[ ${#launchers[@]} -gt 0 ]] || exit 0
+
+changed=0
+for launcher in "${launchers[@]}"; do
+    grep -q "^Exec=$raw_binary " "$launcher" || continue
+
+    # Só a linha Exec=, e só o prefixo do executável: os argumentos (app-id,
+    # user-data-dir, %U) têm que sobreviver intactos, inclusive nos grupos
+    # [Desktop Action], que também carregam Exec= próprio.
+    #
+    # O sufixo .desktop no mktemp não é estética: desktop-file-validate recusa
+    # qualquer arquivo com outra extensão antes mesmo de olhar o conteúdo.
+    temporary_file=$(mktemp --suffix=.desktop "$applications_dir/.brave-norm.XXXXXX")
+    sed "s|^Exec=$raw_binary |Exec=$wrapper |" "$launcher" > "$temporary_file"
+
+    # Alguns lançadores que o Brave gera já nascem inválidos (Type=Application
+    # junto de uma chave URL, por exemplo). Barrar por isso seria recusar
+    # consertar justamente os arquivos problemáticos, então o que interessa é
+    # se a troca do Exec introduziu erro novo — não o estado absoluto.
+    if command -v desktop-file-validate >/dev/null; then
+        before=$(desktop-file-validate "$launcher" 2>&1 | sed "s|^$launcher||" || true)
+        after=$(desktop-file-validate "$temporary_file" 2>&1 | sed "s|^$temporary_file||" || true)
+        if [[ "$before" != "$after" ]]; then
+            rm -f "$temporary_file"
+            echo "brave-launchers: ${launcher##*/} regrediu na validação, mantido" >&2
+            continue
+        fi
+    fi
+
+    # install em vez de mv: o mktemp nasce 0600 e o .desktop precisa ser legível.
+    install -m 0644 "$temporary_file" "$launcher"
+    rm -f "$temporary_file"
+    changed=$((changed + 1))
+    echo "brave-launchers: ${launcher##*/} apontado pro wrapper"
+done
+
+if [[ $changed -gt 0 ]] && command -v update-desktop-database >/dev/null; then
+    update-desktop-database "$applications_dir"
+fi
+{{ end }}
