@@ -47,14 +47,18 @@ jobs:
 
       # O .chezmoiignore é template e é o arquivo mais fácil de quebrar sem
       # perceber: um `{{ if }}` sem fechar só aparece no apply de outra máquina.
+      # --source é obrigatório: lendo de stdin o chezmoi não sabe onde fica o
+      # source dir e cai no default (~/.local/share/chezmoi). Sem isso, o
+      # `.chezmoitemplates/` não carrega e o `include` de outros arquivos do
+      # repo falha — foi exatamente assim que este job quebrou da primeira vez.
       - name: Renderizar o .chezmoiignore
-        run: "$HOME/.local/bin/chezmoi execute-template < .chezmoiignore > /dev/null"
+        run: "$HOME/.local/bin/chezmoi execute-template --source \"$PWD\" < .chezmoiignore > /dev/null"
 
       - name: Renderizar os demais templates
         run: |
           fail=0
           while IFS= read -r f; do
-            "$HOME/.local/bin/chezmoi" execute-template < "$f" > /dev/null 2>/tmp/err || {
+            "$HOME/.local/bin/chezmoi" execute-template --source "$PWD" < "$f" > /dev/null 2>/tmp/err || {
               printf '::error file=%s::falha ao renderizar\n' "$f"
               cat /tmp/err
               fail=1

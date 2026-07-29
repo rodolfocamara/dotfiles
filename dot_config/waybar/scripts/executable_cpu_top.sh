@@ -7,4 +7,7 @@ elif (( cpu < 90 )); then cls="high"
 else                       cls="crit"
 fi
 top10=$(ps axo pid,%cpu,comm --sort=-%cpu | head -11 | tail -10 | awk '{printf "%5s %5s%% %s\\n", $1, $2, $3}')
-echo "{\"text\": \"\uf2db\\n${cpu}%\", \"tooltip\": \"Top CPU:\\n${top10}\", \"class\": \"${cls}\"}"
+# printf, n\u00e3o echo: o \n e o \uf2db precisam sair literais, para o waybar
+# interpret\u00e1-los como escape de JSON. Com echo isso depende de o shell n\u00e3o
+# expandir escapes \u2014 verdade no bash por padr\u00e3o, falso com xpg_echo ligado.
+printf '%s\n' "{\"text\": \"\uf2db\\n${cpu}%\", \"tooltip\": \"Top CPU:\\n${top10}\", \"class\": \"${cls}\"}"

@@ -69,6 +69,8 @@ esac
 if ! command -v cargo >/dev/null 2>&1; then
     echo "Installing Rust and Cargo via rustup..."
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
+    # Criado pelo rustup na linha acima; não existe em tempo de análise.
+    # shellcheck source=/dev/null
     source "$HOME/.cargo/env" || true
 fi
 
@@ -76,7 +78,11 @@ fi
 cargo_packages=("zoxide --locked" "gitui" "du-dust")
 echo "Installing Cargo packages: ${cargo_packages[*]}"
 for pkg in "${cargo_packages[@]}"; do
-    cargo install $pkg || echo "Warning: Failed to install cargo package '$pkg'"
+    # Cada entrada pode trazer flags junto ("zoxide --locked"), então o split
+    # em palavras é intencional. Feito aqui de forma explícita, com read -ra,
+    # em vez de depender do split implícito de uma expansão sem aspas.
+    read -ra spec <<< "$pkg"
+    cargo install "${spec[@]}" || echo "Warning: Failed to install cargo package '$pkg'"
 done
 
 # Fix bat -> batcat symlink if needed (Debian/Ubuntu specific)
