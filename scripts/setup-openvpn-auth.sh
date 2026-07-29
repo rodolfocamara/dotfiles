@@ -3,7 +3,13 @@
 # Rodar: sudo ./scripts/setup-openvpn-auth.sh
 # Não versionar auth.txt — só existe em /etc na máquina.
 
-set -e
+set -euo pipefail
+
+# Antes de qualquer escrita: com o umask padrão (022) o redirecionamento cria o
+# arquivo 0644 e só o chmod seguinte o fecha. Nessa janela a senha da VPN fica
+# legível por qualquer processo local. Com 077 o arquivo já nasce 0600.
+umask 077
+
 AUTH_FILE="/etc/openvpn/client/auth.txt"
 DIR="/etc/openvpn/client"
 
@@ -13,13 +19,16 @@ if [[ ! -d "$DIR" ]]; then
 fi
 
 if [[ -f "$AUTH_FILE" ]]; then
-  read -p "auth.txt já existe. Sobrescrever? (s/N) " r
+  read -rp "auth.txt já existe. Sobrescrever? (s/N) " r
   [[ "${r,,}" != "s" && "${r,,}" != "y" ]] && exit 0
 fi
 
 echo "OpenVPN: credenciais para auth-user-pass (não ficam no Git)."
-read -p "Usuário: " u
-read -sp "Senha: " p
+# -r é obrigatório aqui: sem ele o read interpreta a contrabarra como escape e
+# uma senha que contenha \ entra truncada — o arquivo fica com uma senha que
+# não é a digitada, e a VPN falha sem dizer por quê.
+read -rp "Usuário: " u
+read -rsp "Senha: " p
 echo
 
 printf '%s\n%s\n' "$u" "$p" > "$AUTH_FILE"

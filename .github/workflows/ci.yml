@@ -1,0 +1,111 @@
+name: CI
+
+# Este repo instala coisas em máquina alheia e mexe em /etc. Um script que só
+# quebra na hora do bootstrap quebra tarde demais: a máquina já está pela
+# metade. Daí valer a pena checar o que dá para checar sem uma máquina real.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Um push em cima de outro cancela a execução anterior do mesmo ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  shell:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Os .tmpl não passam pelo shellcheck direto: são templates do chezmoi e
+      # o `{{ ... }}` não é sintaxe de shell. Quem cuida deles é o job chezmoi.
+      - name: shellcheck
+        run: |
+          mapfile -t files < <(git ls-files '*.sh' | grep -v '\.tmpl$')
+          printf 'Verificando %d scripts\n' "${#files[@]}"
+          shellcheck -f gcc "${files[@]}"
+
+      # `bash -n` pega erro de sintaxe que o shellcheck deixa passar em arquivo
+      # que ele decide não analisar (shebang exótico, por exemplo).
+      - name: bash -n
+        run: git ls-files '*.sh' | grep -v '\.tmpl$' | xargs -r -n1 bash -n
+
+  chezmoi:
+    name: chezmoi
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar chezmoi
+        run: sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+
+      # O .chezmoiignore é template e é o arquivo mais fácil de quebrar sem
+      # perceber: um `{{ if }}` sem fechar só aparece no apply de outra máquina.
+      - name: Renderizar o .chezmoiignore
+        run: "$HOME/.local/bin/chezmoi execute-template < .chezmoiignore > /dev/null"
+
+      - name: Renderizar os demais templates
+        run: |
+          fail=0
+          while IFS= read -r f; do
+            "$HOME/.local/bin/chezmoi" execute-template < "$f" > /dev/null 2>/tmp/err || {
+              printf '::error file=%s::falha ao renderizar\n' "$f"
+              cat /tmp/err
+              fail=1
+            }
+          done < <(git ls-files '*.tmpl')
+          exit "$fail"
+
+  hygiene:
+    name: higiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Este repositório é público e não pode citar o empregador — em arquivo,
+      # em mensagem de commit ou na autoria. Ele já foi apagado e recriado uma
+      # vez por causa disso; ver docs/artifacts.md.
+      #
+      # O padrão vem de um secret, não do YAML, por dois motivos: escrevê-lo
+      # aqui já seria a menção que se quer evitar, e o Actions mascara secrets
+      # na saída — sem isso, um job que falhasse publicaria o termo no log,
+      # que é público. Por isso também só se reporta arquivo e linha, nunca o
+      # conteúdo casado.
+      - name: Termo proibido em arquivos, mensagens e autoria
+        env:
+          BANNED: ${{ secrets.BANNED_REGEX }}
+        run: |
+          if [[ -z "${BANNED:-}" ]]; then
+            echo "::warning::secret BANNED_REGEX não configurado — checagem pulada"
+            exit 0
+          fi
+          fail=0
+          if git grep -InE "$BANNED" -- . >/dev/null 2>&1; then
+            git grep -InE "$BANNED" -- . | cut -d: -f1,2 | sort -u \
+              | sed 's/^/::error::termo proibido em /'
+            fail=1
+          fi
+          if git log --format='%an%n%ae%n%cn%n%ce%n%s%n%b' | grep -qE "$BANNED"; then
+            echo "::error::termo proibido em metadados de commit (autoria ou mensagem)"
+            fail=1
+          fi
+          exit "$fail"
+
+      # artifacts/ guarda material sensível e depende de estar nos DOIS ignores.
+      # Só o .gitignore não basta: o destDir do chezmoi é o home, então sem a
+      # entrada no .chezmoiignore um `apply` copiaria tudo para ~/artifacts/.
+      - name: artifacts/ ignorado pelo git e pelo chezmoi
+        run: |
+          grep -qx 'artifacts/' .gitignore   || { echo "::error::artifacts/ fora do .gitignore"; exit 1; }
+          grep -qx 'artifacts/' .chezmoiignore || { echo "::error::artifacts/ fora do .chezmoiignore"; exit 1; }
+          if git ls-files --error-unmatch artifacts >/dev/null 2>&1; then
+            echo "::error::há arquivo rastreado dentro de artifacts/"; exit 1
+          fi
