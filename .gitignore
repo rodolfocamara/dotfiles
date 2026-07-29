@@ -2,6 +2,11 @@
 .chezmoidata.toml
 .chezmoidata/
 
+# Material sensível que precisa morar perto do repo mas nunca ser publicado —
+# este repo é público. Certificado de CA interna, kubeconfig, fstab da máquina.
+# Ver docs/artifacts.md.
+artifacts/
+
 # Claude Code runtime/local
 .claude/settings.local.json
 .claude/scheduled_tasks.lock

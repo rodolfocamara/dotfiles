@@ -30,6 +30,10 @@ home/
 # árvore mapearia para ~/etc/openvpn/... — lixo no home, e os arquivos nunca
 # chegariam em /etc. Quem instala é scripts/install-etc.sh. Ver docs/openvpn.md.
 etc/
+# artifacts/ é material sensível, fora do git. Precisa estar aqui também: o
+# .gitignore esconde do git, não do chezmoi — sem esta linha o `apply` criaria
+# ~/artifacts/ com uma cópia de tudo. Ver docs/artifacts.md.
+artifacts/
 
 # Stack de desktop do Hyprland. Fora do perfil hyprland não tem alvo com
 # sentido — inclusive no Windows, onde $profile cai em "generic".
