@@ -1,1 +1,6 @@
 # AUR-only packages (one per line; keep minimal; can be empty)
+
+# GUI de Kubernetes, substituta do Lens. Está no AUR porque não há pacote nos
+# repos oficiais — as alternativas de repo (k9s) são TUI, não GUI. É o projeto
+# do Kubernetes SIG UI, sucessor do kubernetes/dashboard, que foi arquivado.
+headlamp-bin
