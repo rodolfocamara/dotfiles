@@ -10,6 +10,8 @@ if [[ ! -f /etc/os-release ]]; then
     echo "Not a Linux with os-release"
     exit 0
 fi
+# Arquivo do sistema, não do repo — o shellcheck não tem como segui-lo.
+# shellcheck source=/dev/null
 source /etc/os-release
 if [[ "$ID" != "arch" && "${ID_LIKE:-}" != *arch* ]]; then
     echo "Not Arch Linux"
@@ -43,7 +45,11 @@ CHEZMOI_SOURCE_DIR="$REPO_ROOT" "$REPO_ROOT/scripts/install-packages.linux-arch.
 if ! command -v yay >/dev/null 2>&1; then
     echo "Installing yay..."
     tmp_yay=$(mktemp -d)
-    trap "rm -rf $tmp_yay" EXIT
+    # Aspas simples: o $tmp_yay expande na hora do sinal, não agora, e fica
+    # entre aspas. Com aspas duplas o caminho é fixado na definição do trap e
+    # entra sem proteção num `rm -rf` — um caminho com espaço vira dois
+    # argumentos.
+    trap 'rm -rf "$tmp_yay"' EXIT
     git clone https://aur.archlinux.org/yay-bin.git "$tmp_yay"
     (cd "$tmp_yay" && makepkg -si --noconfirm) || (cd "$tmp_yay" && makepkg -si --noconfirm)
 fi

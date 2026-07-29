@@ -45,7 +45,11 @@ if [[ -f "$SECRET_FILE" ]]; then
   echo "secret.env já existe — mantido."
 else
   say "Gerando $SECRET_FILE"
-  printf 'SEARXNG_SECRET=%s\n' "$(openssl rand -hex 32)" > "$SECRET_FILE"
+  # Subshell com umask 077: sem isso o redirecionamento cria o arquivo 0644 e
+  # só o chmod seguinte o fecha, deixando o segredo legível por qualquer
+  # processo local nessa janela. Fica em subshell para não alterar o umask do
+  # resto do script.
+  ( umask 077; printf 'SEARXNG_SECRET=%s\n' "$(openssl rand -hex 32)" > "$SECRET_FILE" )
   chmod 600 "$SECRET_FILE"
 fi
 
