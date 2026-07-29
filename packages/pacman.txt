@@ -22,6 +22,10 @@ wl-clipboard
 wayland-protocols
 imagemagick
 python
+# uv: gerencia as venvs e os interpretadores dos projetos Python. Sem ele, um
+# `.venv` criado em outra máquina fica com o symlink do interpretador pendurado
+# e nada roda até refazer com `uv sync`.
+uv
 sqlite
 pipewire
 wireplumber

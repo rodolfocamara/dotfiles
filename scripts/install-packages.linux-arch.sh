@@ -48,12 +48,30 @@ profile_file="$source_dir/packages/pacman.$profile.txt"
 list=$(grep -hEv '^[[:space:]]*(#|$)' "${files[@]}")
 [[ -z "$list" ]] && { echo "No packages in ${files[*]}"; exit 0; }
 
+# packages/aur.txt é opcional e costuma ficar vazio — só entra aqui o que não
+# existe nos repos oficiais. Fica separado porque o pacman não sabe instalar
+# do AUR: precisa de um helper, e numa máquina sem helper o resto da lista
+# ainda deve ser instalado normalmente.
+aur_file="$source_dir/packages/aur.txt"
+aur_list=""
+[[ -f "$aur_file" ]] && aur_list=$(grep -hEv '^[[:space:]]*(#|$)' "$aur_file" || true)
+
+aur_helper=""
+for h in paru yay; do
+    command -v "$h" >/dev/null 2>&1 && { aur_helper="$h"; break; }
+done
+
 echo "Profile: $profile"
 for f in "${files[@]}"; do echo "  + ${f#"$source_dir"/}"; done
+[[ -n "$aur_list" ]] && echo "  + packages/aur.txt (via ${aur_helper:-nenhum helper})"
 
 if (( dry_run )); then
     echo "--- would install ($(echo "$list" | wc -l) packages) ---"
     echo "$list"
+    if [[ -n "$aur_list" ]]; then
+        echo "--- AUR ($(echo "$aur_list" | wc -l) packages) ---"
+        echo "$aur_list"
+    fi
     exit 0
 fi
 
@@ -61,5 +79,17 @@ while fuser /var/lib/pacman/db.lck >/dev/null 2>&1; do sleep 2; done
 
 echo "Installing packages..."
 echo "$list" | sudo pacman -Syu --needed --noconfirm -
+
+# O helper roda como você, sem sudo — ele eleva sozinho só na hora de instalar
+# o pacote já construído. Com sudo, o build aconteceria como root.
+if [[ -n "$aur_list" ]]; then
+    if [[ -z "$aur_helper" ]]; then
+        echo "Nenhum helper de AUR (paru/yay) — pulando: $(echo "$aur_list" | tr '\n' ' ')"
+    else
+        echo "Installing AUR packages with $aur_helper..."
+        # shellcheck disable=SC2086
+        $aur_helper -S --needed --noconfirm $aur_list
+    fi
+fi
 
 echo "Arch package installation complete."
