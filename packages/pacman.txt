@@ -42,3 +42,18 @@ podman
 # ddcutil: separa "EDID lê" de "monitor acordado", que é o diagnóstico inteiro
 jq
 ddcutil
+
+# Jogos. O Proton (DXVK/VKD3D, D3D traduzido pra Vulkan) vem dentro do próprio
+# Steam, então o que precisa vir do pacman é só o entorno.
+#
+# As variantes lib32 não são redundância: o overlay do MangoHud e o cliente do
+# GameMode são carregados dentro do processo do jogo, e precisam bater com o
+# bitness dele. Jogo 32-bit com só a lib 64-bit não dá erro — a camada
+# simplesmente não engata, e o sintoma é "o overlay não aparece nesse jogo".
+steam
+gamescope
+mangohud
+lib32-mangohud
+gamemode
+lib32-gamemode
+discord
