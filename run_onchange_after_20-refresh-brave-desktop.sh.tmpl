@@ -2,7 +2,7 @@
 set -euo pipefail
 {{- $profile := (index . "profile") | default (ternary "hyprland" "generic" (ne (lookPath "Hyprland") "")) }}
 {{ if and (eq .chezmoi.os "linux") (eq $profile "kde") }}
-# desktop file do pacote: {{ output "sha256sum" "/usr/share/applications/brave-browser.desktop" | trim }}
+# desktop file do pacote: {{ output "sh" "-c" "sha256sum /usr/share/applications/brave-browser.desktop 2>/dev/null | cut -d' ' -f1 || printf missing" | trim }}
 
 # O editor de associações do Plasma já deixou uma lista de MIME types sem
 # chave no override local do Brave. Isso faz plasmashell e KWin repetirem
