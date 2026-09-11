@@ -62,5 +62,5 @@
 {{- $workDir := (index $workGit "dir") | default "" -}}
 {{- if $workDir }}
 [includeIf "gitdir:{{ $workDir }}"]
-	path = ~/.gitconfig-work
+	path = {{ index $workGit "path" | default "~/.gitconfig-work" }}
 {{ end -}}
