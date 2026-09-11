@@ -2,9 +2,9 @@
 Version=1.0
 Type=Application
 Name=Apps (Pessoal)
-Comment=Todas as PWAs instaladas no perfil pessoal do Brave
+Comment=Aplicativos do perfil pessoal do Chrome
 Terminal=false
-Exec=/usr/bin/brave --profile-directory=Default --class=brave-apps-personal --app=brave://apps
-Icon=brave-desktop
-StartupWMClass=brave-apps-personal
+Exec={{ .chezmoi.homeDir }}/.local/bin/chrome-profile personal --app=chrome://apps
+Icon=google-chrome
+StartupWMClass=brave-browser
 Categories=Network;

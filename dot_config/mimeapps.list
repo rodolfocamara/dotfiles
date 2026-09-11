@@ -1,0 +1,35 @@
+[Added Associations]
+application/json=dev.zed.Zed.desktop;
+application/pdf=firefox.desktop;brave-browser.desktop;
+application/x-docbook+xml=dev.zed.Zed.desktop;
+application/x-yaml=dev.zed.Zed.desktop;
+text/markdown=dev.zed.Zed.desktop;
+text/plain=dev.zed.Zed.desktop;
+text/x-cmake=dev.zed.Zed.desktop;
+x-scheme-handler/geo=google-maps-geo-handler.desktop;
+x-scheme-handler/mailto=brave-fmgjjmmmlfnkbppncabfkddbjimcfncm-Default.desktop;
+x-scheme-handler/t3code=t3code.desktop;
+
+[Default Applications]
+application/json=dev.zed.Zed.desktop;
+application/pdf=firefox.desktop;
+application/x-docbook+xml=dev.zed.Zed.desktop;
+application/x-yaml=dev.zed.Zed.desktop;
+text/markdown=nvim-kitty.desktop
+text/plain=nvim-kitty.desktop
+text/x-cmake=dev.zed.Zed.desktop;
+x-scheme-handler/bitwarden=bitwarden.desktop
+x-scheme-handler/claude-cli=claude-code-url-handler.desktop
+x-scheme-handler/geo=google-maps-geo-handler.desktop;
+x-scheme-handler/http=brave-work-browser.desktop
+x-scheme-handler/mailto=google-chrome.desktop
+x-scheme-handler/terminal=kitty.desktop
+x-scheme-handler/logseq=logseq-desktop.desktop
+text/x-log=nvim-kitty.desktop
+text/x-shellscript=nvim-kitty.desktop
+x-scheme-handler/claude=com.anthropic.Claude.desktop
+x-scheme-handler/web+msteams=brave-teams-work.desktop
+x-scheme-handler/codex=codex-desktop.desktop
+x-scheme-handler/https=brave-work-browser.desktop
+text/html=brave-work-browser.desktop
+x-scheme-handler/t3code=t3code-url-handler.desktop

@@ -1,0 +1,25 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+X-KDE-Shortcuts=Meta+Y
+Name=Google Chrome (Pessoal)
+GenericName=Web Browser
+Comment=Access the Internet
+Terminal=false
+Exec={{ .chezmoi.homeDir }}/.local/bin/chrome-profile personal %U
+StartupNotify=true
+Icon=google-chrome
+StartupWMClass=brave-browser
+Categories=Network;WebBrowser;
+MimeType=application/pdf;application/rdf+xml;application/rss+xml;application/xhtml+xml;application/xhtml_xml;application/xml;image/gif;image/jpeg;image/png;image/webp;text/html;text/xml;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/google-chrome;
+Actions=new-window;new-private-window;
+
+[Desktop Action new-window]
+Name=New Window
+Name[pt_BR]=Nova janela
+Exec={{ .chezmoi.homeDir }}/.local/bin/chrome-profile personal
+
+[Desktop Action new-private-window]
+Name=New Incognito Window
+Name[pt_BR]=Nova janela anônima
+Exec={{ .chezmoi.homeDir }}/.local/bin/chrome-profile personal --incognito
