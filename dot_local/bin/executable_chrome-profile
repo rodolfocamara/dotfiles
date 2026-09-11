@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+profile="${1:-}"
+[[ -n "$profile" ]] && shift
+
+case "$profile" in
+    personal)
+        user_data_dir="$HOME/.config/google-chrome-personal"
+        app_class="brave-browser"
+        ;;
+    work)
+        user_data_dir="$HOME/.config/google-chrome-work"
+        app_class="brave-work-browser"
+        ;;
+    *)
+        printf 'uso: chrome-profile {personal|work} [argumentos do Chrome]\n' >&2
+        exit 2
+        ;;
+esac
+
+filtered_args=()
+skip_next=0
+for argument in "$@"; do
+    if ((skip_next)); then
+        skip_next=0
+        continue
+    fi
+    case "$argument" in
+        --user-data-dir|--class)
+            skip_next=1
+            ;;
+        --user-data-dir=*|--class=*)
+            ;;
+        *)
+            filtered_args+=("$argument")
+            ;;
+    esac
+done
+
+exec /usr/bin/google-chrome-stable \
+    --user-data-dir="$user_data_dir" \
+    --class="$app_class" \
+    "${filtered_args[@]}"

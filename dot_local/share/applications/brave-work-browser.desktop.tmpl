@@ -1,10 +1,11 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=Brave (Work — Browser)
-Comment=Brave em modo navegador no perfil Work — pra instalar extensões e gerenciar settings
+Name=Google Chrome (Work)
+Comment=Chrome em modo navegador no perfil Work para extensões e configurações
 Terminal=false
-Exec=/usr/bin/brave --user-data-dir={{ .chezmoi.homeDir }}/.config/BraveSoftware/Brave-Browser-Work --class=brave-work-browser %U
-Icon=brave-work
+Exec={{ .chezmoi.homeDir }}/.local/bin/chrome-profile work %U
+Icon={{ .chezmoi.homeDir }}/.local/share/icons/hicolor/256x256/apps/google-chrome-work.png
 StartupWMClass=brave-work-browser
 Categories=Network;WebBrowser;X-Trabalho;
+MimeType=text/html;x-scheme-handler/https;x-scheme-handler/http;

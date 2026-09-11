@@ -1,0 +1,13 @@
+{{- /* Sombra do entry do pacote: resolve "Google Chrome" do menu e o mailto pro
+     perfil pessoal. O default de http/https é o perfil Work, via mimeapps.list
+     — abrir link de app (T3 Code, Wave, etc.) nunca cai na janela pessoal. */ -}}
+[Desktop Entry]
+Type=Application
+Name=Google Chrome
+Comment=Identidade interna para janelas antigas do Chrome
+NoDisplay=true
+Exec={{ .chezmoi.homeDir }}/.local/bin/chrome-profile personal %U
+Icon=google-chrome
+StartupWMClass=google-chrome
+Categories=Network;WebBrowser;
+MimeType=x-scheme-handler/mailto;

@@ -55,14 +55,21 @@ artifacts/
 .local/bin/fix-monitor-after-resume
 .local/bin/fix-bluetooth-mouse
 .local/bin/screenshot-region-multiformat
+# Stack de browser: chrome-profile separa personal/work, e o mimeapps.list
+# decide o default — http/https/text/html resolvem pro perfil Work.
+.local/bin/chrome-profile
 .local/share/applications/brave-cadlkienfkclaiaibeoongdcgmdikeeg-Default.desktop
 .local/share/applications/brave-azure-devops-work.desktop
 .local/share/applications/brave-fmpnliohjhemenmnlpbfagaolkdacoja-Default.desktop
-.local/share/applications/brave-outlook-work.desktop
+.local/share/applications/brave-faolnafnngnfdaknnbpnkhgohbobgegn-Default.desktop
 .local/share/applications/brave-teams-work.desktop
 .local/share/applications/brave-work-browser.desktop
+.local/share/applications/brave-browser.desktop
+.local/share/applications/google-chrome.desktop
 .local/share/applications/brave-apps-work.desktop
 .local/share/applications/brave-apps-personal.desktop
+.local/share/icons/hicolor/256x256/apps/
+.config/mimeapps.list
 .local/share/desktop-directories/Trabalho.directory
 .config/menus/applications-merged/trabalho.menu
 .local/share/applications/display-brightness-cycle.desktop

@@ -2,10 +2,10 @@
 Version=1.0
 Type=Application
 Name=ChatGPT
-Comment=ChatGPT PWA no perfil pessoal do Brave
+Comment=ChatGPT no perfil pessoal do Chrome
 Terminal=false
-Exec=/usr/bin/brave --profile-directory=Default --app-id=cadlkienfkclaiaibeoongdcgmdikeeg
-Icon={{ .chezmoi.homeDir }}/.config/BraveSoftware/Brave-Browser/Default/Web Applications/Manifest Resources/cadlkienfkclaiaibeoongdcgmdikeeg/Icons/256.png
+Exec={{ .chezmoi.homeDir }}/.local/bin/chrome-profile personal --app=https://chatgpt.com/
+Icon={{ .chezmoi.homeDir }}/.local/share/icons/hicolor/256x256/apps/google-chatgpt-personal.png
 StartupWMClass=crx_cadlkienfkclaiaibeoongdcgmdikeeg
 Categories=Network;Chat;
 StartupNotify=true

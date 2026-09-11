@@ -1,0 +1,25 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Outlook (Work)
+Comment=Outlook no perfil Work do Chrome
+Terminal=false
+Exec={{ .chezmoi.homeDir }}/.local/bin/chrome-profile work --profile-directory="Profile 1" --app=https://outlook.office.com/mail/ %U
+Icon=outlook-work
+StartupWMClass=chrome-outlook.office.com__mail_-Profile_1
+Categories=Office;Email;X-Trabalho;
+MimeType=x-scheme-handler/mailto;
+Actions=Calendar;Compose;NewEvent;
+StartupNotify=true
+
+[Desktop Action Calendar]
+Name=Abrir calendário
+Exec={{ .chezmoi.homeDir }}/.local/bin/chrome-profile work --profile-directory="Profile 1" --app=https://outlook.office.com/calendar
+
+[Desktop Action Compose]
+Name=Nova mensagem
+Exec={{ .chezmoi.homeDir }}/.local/bin/chrome-profile work --profile-directory="Profile 1" --app=https://outlook.office.com/mail/deeplink/compose
+
+[Desktop Action NewEvent]
+Name=Novo evento
+Exec={{ .chezmoi.homeDir }}/.local/bin/chrome-profile work --profile-directory="Profile 1" --app=https://outlook.office.com/calendar/deeplink/compose
