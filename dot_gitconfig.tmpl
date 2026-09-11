@@ -45,11 +45,17 @@
 	useHttpPath = true
 {{ end -}}
 {{ if $gh -}}
-# Additive, not a reset: no empty `helper =` here, so any generic helper set
-# above is still tried first and gh only runs if that returns nothing.
+# Reset de propósito: o gh deve ser o ÚNICO helper do github.com. Quando o GCM
+# também atendia este host, ele gravava o token com que apps fazem push (uma
+# conta `x-access-token` aparecia no chaveiro junto com a conta real) e, com
+# duas contas, abria o seletor de conta a cada fetch em segundo plano. O gh
+# responde em silêncio com a conta do `gh auth login` — que numa máquina nova
+# precisa ter rodado antes. O GCM segue valendo para os demais hosts.
 [credential "https://github.com"]
+	helper =
 	helper = !{{ $gh }} auth git-credential
 [credential "https://gist.github.com"]
+	helper =
 	helper = !{{ $gh }} auth git-credential
 {{ end -}}
 {{- $workGit := (index . "workGit") | default dict -}}
@@ -57,4 +63,4 @@
 {{- if $workDir }}
 [includeIf "gitdir:{{ $workDir }}"]
 	path = ~/.gitconfig-work
-{{- end }}
+{{ end -}}
