@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Microsoft Teams (Work)
+Comment=Identidade da janela do Teams Work no Chrome
+Terminal=false
+NoDisplay=true
+Exec={{ .chezmoi.homeDir }}/.local/bin/chrome-profile work --profile-directory="Profile 1" --app="https://teams.cloud.microsoft/?clientType=pwa" %U
+Icon=teamswork
+StartupWMClass=chrome-teams.cloud.microsoft__-Profile_1
+Categories=Network;Chat;InstantMessaging;X-Trabalho;
+MimeType=x-scheme-handler/web+msteams;
+StartupNotify=true

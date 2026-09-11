@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+set -euo pipefail
+{{- $profile := (index . "profile") | default (ternary "hyprland" "generic" (ne (lookPath "Hyprland") "")) }}
+{{ if eq $profile "kde" }}
+# versões das fontes:
+# {{ output "sh" "-c" "pacman -Q plasma-workspace 2>/dev/null || printf missing" | trim }}
+# {{ output "sh" "-c" "pacman -Q libksysguard 2>/dev/null || printf missing" | trim }}
+# {{ output "sh" "-c" "pacman -Q kdeplasma-addons 2>/dev/null || printf missing" | trim }}
+# {{ output "sh" "-c" "pacman -Q papirus-icon-theme 2>/dev/null || printf missing" | trim }}
+
+dry_run=false
+case "${1:-}" in
+    '') ;;
+    --dry-run) dry_run=true ;;
+    *)
+        echo "uso: ${0##*/} [--dry-run]" >&2
+        exit 2
+        ;;
+esac
+
+data_home=${XDG_DATA_HOME:-"$HOME/.local/share"}
+source_face=/usr/share/ksysguard/sensorfaces/org.kde.ksysguard.piechart
+face_id=local.padded.piechart
+face_target=$data_home/ksysguard/sensorfaces/$face_id
+source_theme=Papirus-Dark
+padded_theme=Papirus-Dark-Padded
+theme_target=$data_home/icons/$padded_theme
+
+temporary_dir=
+if ! $dry_run; then
+    temporary_dir=$(mktemp -d)
+    trap 'rm -rf -- "$temporary_dir"' EXIT
+fi
+
+if [[ -d "$source_face" ]]; then
+    if $dry_run; then
+        echo "plasma-panel-padding: instalaria a face $face_id em $face_target"
+    else
+        temporary_face=$temporary_dir/$face_id
+        cp -a "$source_face" "$temporary_face"
+
+        compact_qml=$temporary_face/contents/ui/CompactRepresentation.qml
+        if ! grep -q 'PieChart {' "$compact_qml"; then
+            echo "plasma-panel-padding: formato inesperado em $compact_qml" >&2
+            exit 1
+        fi
+
+        # A margem pertence à face clonada, não ao plasmoide genérico. Assim só
+        # o medidor de memória escolhido abaixo fica menor.
+        sed -i '0,/        PieChart {/s//        PieChart {\n            Layout.margins: Kirigami.Units.smallSpacing/' "$compact_qml"
+        sed -i '0,/"Id": "org.kde.ksysguard.piechart"/s//"Id": "local.padded.piechart"/' "$temporary_face/metadata.json"
+        sed -i '0,/"Name": "Pie Chart"/s//"Name": "Padded Pie Chart"/' "$temporary_face/metadata.json"
+
+        install -d -m 0755 "$face_target"
+        cp -a "$temporary_face/." "$face_target/"
+    fi
+else
+    echo "plasma-panel-padding: face de gráfico do sistema não encontrada; ignorando memória"
+fi
+
+current_theme=
+if command -v kreadconfig6 >/dev/null; then
+    current_theme=$(kreadconfig6 --file kdeglobals --group Icons --key Theme)
+fi
+
+if [[ "$current_theme" == "$source_theme" || "$current_theme" == "$padded_theme" ]]; then
+    breeze_weather=/usr/share/icons/breeze-dark/applets/48
+    if [[ -d "$breeze_weather" ]]; then
+        if $dry_run; then
+            icon_count=$(find -L "$breeze_weather" -maxdepth 1 -type f -name 'weather-*-symbolic.svg' | wc -l)
+            echo "plasma-panel-padding: geraria $icon_count ícones de clima em $theme_target"
+        else
+            temporary_icons=$temporary_dir/$padded_theme
+            install -d -m 0755 "$temporary_icons/48x48/status"
+
+            while IFS= read -r breeze_icon; do
+                icon_name=${breeze_icon##*/}
+                source_icon=
+                for size in 32x32 24x24 22x22 16x16; do
+                    candidate=/usr/share/icons/$source_theme/$size/symbolic/status/$icon_name
+                    if [[ -f "$candidate" ]]; then
+                        source_icon=$candidate
+                        break
+                    fi
+                done
+                [[ -n "$source_icon" ]] || source_icon=$breeze_icon
+
+                source_size=$(grep -Eo -m1 'width="[0-9.]+"' "$source_icon" | cut -d '"' -f 2)
+                if [[ -z "$source_size" ]]; then
+                    echo "plasma-panel-padding: largura ausente em $source_icon" >&2
+                    exit 1
+                fi
+                scale=$(awk -v source_size="$source_size" 'BEGIN { printf "%.8f", 40 / source_size }')
+
+                {
+                    printf '%s\n' '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="48" height="48" viewBox="0 0 48 48">'
+                    printf ' <g transform="translate(4 4) scale(%s)">\n' "$scale"
+                    sed -E \
+                        -e '/^[[:space:]]*<\?xml/d' \
+                        -e '0,/<svg[^>]*>/s///' \
+                        -e '$s#</svg>[[:space:]]*$##' \
+                        "$source_icon"
+                    printf '%s\n' ' </g>' '</svg>'
+                } >"$temporary_icons/48x48/status/$icon_name"
+            done < <(find -L "$breeze_weather" -maxdepth 1 -type f -name 'weather-*-symbolic.svg' | sort)
+
+            cat >"$temporary_icons/index.theme" <<'EOF'
+[Icon Theme]
+Name=Papirus Dark with Padded Weather
+Comment=Papirus Dark with additional spacing around weather panel icons
+Inherits=Papirus-Dark
+FollowsColorScheme=true
+Directories=48x48/status
+
+[48x48/status]
+Size=48
+Context=Status
+Type=Fixed
+EOF
+
+            install -d -m 0755 "$theme_target/48x48/status"
+            install -m 0644 "$temporary_icons/index.theme" "$theme_target/index.theme"
+            install -m 0644 "$temporary_icons/48x48/status/"*.svg "$theme_target/48x48/status/"
+        fi
+    else
+        echo "plasma-panel-padding: ícones Breeze de clima não encontrados; ignorando clima"
+    fi
+else
+    echo "plasma-panel-padding: tema $current_theme não é Papirus Dark; ignorando clima"
+fi
+
+if $dry_run; then
+    exit 0
+fi
+
+command -v kbuildsycoca6 >/dev/null && kbuildsycoca6 --noincremental >/dev/null || true
+
+if [[ "$current_theme" == "$source_theme" || "$current_theme" == "$padded_theme" ]]; then
+    if [[ "$current_theme" == "$source_theme" && -x /usr/lib/plasma-changeicons ]]; then
+        # O helper oficial limpa o cache compartilhado e avisa os processos
+        # abertos. Se a variante já está ativa, os arquivos novos entram na
+        # próxima sessão sem provocar uma troca visual desnecessária agora.
+        /usr/lib/plasma-changeicons "$padded_theme" >/dev/null 2>&1
+    elif [[ "$current_theme" == "$source_theme" ]]; then
+        kwriteconfig6 --file kdeglobals --group Icons --key Theme "$padded_theme"
+    fi
+fi
+
+if command -v qdbus6 >/dev/null && qdbus6 org.kde.plasmashell >/dev/null 2>&1; then
+    plasma_script='var changed = 0; for (var i = 0; i < panels().length; ++i) { var widgets = panels()[i].widgets(); for (var j = 0; j < widgets.length; ++j) { var widget = widgets[j]; if (widget.type === "org.kde.plasma.systemmonitor.memory") { widget.currentConfigGroup = ["Appearance"]; widget.writeConfig("chartFace", "local.padded.piechart"); ++changed; } } } print(changed);'
+    changed=$(qdbus6 org.kde.plasmashell /PlasmaShell \
+        org.kde.PlasmaShell.evaluateScript "$plasma_script")
+    echo "plasma-panel-padding: $changed medidor(es) de memória ajustado(s)"
+fi
+{{ end }}

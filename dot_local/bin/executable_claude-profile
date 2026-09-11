@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+
+readonly state_dir="${XDG_CONFIG_HOME:-$HOME/.config}/claude-code"
+readonly mapping_file="$state_dir/project-profiles.tsv"
+
+usage() {
+  cat <<'USAGE'
+Uso:
+  claude-profile resolve [repo-path]
+  claude-profile set personal|work [repo-path] [--dry-run]
+  claude-profile unset [repo-path] [--dry-run]
+  claude-profile list
+
+Sem mapeamento, o comando `claude` usa o perfil personal.
+O arquivo local de mapeamento não é versionado pelo dotfiles.
+USAGE
+}
+
+fail() {
+  printf 'erro: %s\n' "$*" >&2
+  exit 1
+}
+
+canonical_project() {
+  local input="${1:-$PWD}"
+  local path common top
+
+  [[ -d "$input" ]] || fail "diretório não encontrado: $input"
+  path="$(realpath "$input")"
+
+  if git -C "$path" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    top="$(git -C "$path" rev-parse --show-toplevel)"
+    common="$(git -C "$path" rev-parse --path-format=absolute --git-common-dir)"
+    if [[ "$common" == */.git ]]; then
+      dirname "$common"
+    else
+      printf '%s\n' "$top"
+    fi
+  else
+    printf '%s\n' "$path"
+  fi
+}
+
+resolve_profile() {
+  local project="$1"
+  local mapped_path mapped_profile best_path="" best_profile=""
+
+  if [[ ! -f "$mapping_file" ]]; then
+    printf 'personal\n'
+    return 0
+  fi
+
+  while IFS=$'\t' read -r mapped_path mapped_profile; do
+    [[ -n "$mapped_path" && -n "$mapped_profile" ]] || continue
+    if [[ "$project" == "$mapped_path" || "$project" == "$mapped_path/"* ]]; then
+      if (( ${#mapped_path} > ${#best_path} )); then
+        best_path="$mapped_path"
+        best_profile="$mapped_profile"
+      fi
+    fi
+  done < "$mapping_file"
+
+  printf '%s\n' "${best_profile:-personal}"
+}
+
+write_mapping() {
+  local action="$1"
+  local project="$2"
+  local profile="$3"
+  local dry_run="$4"
+  local temporary
+
+  if [[ "$dry_run" == '1' ]]; then
+    if [[ "$action" == 'set' ]]; then
+      printf 'DRY-RUN: mapear %s -> %s\n' "$project" "$profile"
+    else
+      printf 'DRY-RUN: remover mapeamento de %s\n' "$project"
+    fi
+    return 0
+  fi
+
+  install -d -m 700 "$state_dir"
+  temporary="$(mktemp "$state_dir/.project-profiles.XXXXXX")"
+  trap 'rm -f "$temporary"' RETURN
+
+  if [[ -f "$mapping_file" ]]; then
+    awk -F '\t' -v project="$project" '$1 != project' "$mapping_file" > "$temporary"
+  fi
+  if [[ "$action" == 'set' ]]; then
+    printf '%s\t%s\n' "$project" "$profile" >> "$temporary"
+  fi
+
+  LC_ALL=C sort -u -o "$temporary" "$temporary"
+  chmod 600 "$temporary"
+  mv "$temporary" "$mapping_file"
+  trap - RETURN
+}
+
+command_name="${1:-resolve}"
+[[ $# -eq 0 ]] || shift
+
+case "$command_name" in
+  resolve)
+    project="$(canonical_project "${1:-$PWD}")"
+    resolve_profile "$project"
+    ;;
+  set)
+    profile="${1:-}"
+    [[ "$profile" == 'personal' || "$profile" == 'work' ]] || \
+      fail 'o perfil deve ser personal ou work'
+    shift
+    repo_path=""
+    dry_run=0
+    while (($#)); do
+      case "$1" in
+        --dry-run) dry_run=1 ;;
+        -*) fail "argumento inesperado: $1" ;;
+        *)
+          [[ -z "$repo_path" ]] || fail "argumento inesperado: $1"
+          repo_path="$1"
+          ;;
+      esac
+      shift
+    done
+    repo_path="${repo_path:-$PWD}"
+    project="$(canonical_project "$repo_path")"
+    write_mapping set "$project" "$profile" "$dry_run"
+    [[ "$dry_run" == '1' ]] || printf '%s -> %s\n' "$project" "$profile"
+    ;;
+  unset)
+    repo_path=""
+    dry_run=0
+    while (($#)); do
+      case "$1" in
+        --dry-run) dry_run=1 ;;
+        -*) fail "argumento inesperado: $1" ;;
+        *)
+          [[ -z "$repo_path" ]] || fail "argumento inesperado: $1"
+          repo_path="$1"
+          ;;
+      esac
+      shift
+    done
+    repo_path="${repo_path:-$PWD}"
+    project="$(canonical_project "$repo_path")"
+    write_mapping unset "$project" '' "$dry_run"
+    [[ "$dry_run" == '1' ]] || printf 'mapeamento removido: %s\n' "$project"
+    ;;
+  list)
+    [[ $# -eq 0 ]] || fail "argumento inesperado: $1"
+    [[ -f "$mapping_file" ]] && cat "$mapping_file"
+    ;;
+  -h|--help|help)
+    usage
+    ;;
+  *)
+    usage >&2
+    fail "comando desconhecido: $command_name"
+    ;;
+esac

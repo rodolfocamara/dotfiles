@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+{{- $profile := (index . "profile") | default (ternary "hyprland" "generic" (ne (lookPath "Hyprland") "")) }}
+{{ if and (eq .chezmoi.os "linux") (eq $profile "kde") }}
+
+command -v kreadconfig6 >/dev/null || exit 0
+command -v kwriteconfig6 >/dev/null || exit 0
+
+config_file=${XDG_CONFIG_HOME:-"$HOME/.config"}/kwinrulesrc
+rule_id=outlook-icon
+rules=$(kreadconfig6 --file "$config_file" --group General --key rules)
+
+case ",$rules," in
+    *",$rule_id,"*) ;;
+    *) rules=${rules:+$rules,}$rule_id ;;
+esac
+
+kwriteconfig6 --file "$config_file" --group General --key rules "$rules"
+kwriteconfig6 --file "$config_file" --group "$rule_id" --key Description \
+    "Outlook Work icon and launcher association"
+kwriteconfig6 --file "$config_file" --group "$rule_id" --key Enabled \
+    --type bool true
+kwriteconfig6 --file "$config_file" --group "$rule_id" --key wmclass \
+    chrome-outlook.office.com__mail_-Profile_1
+kwriteconfig6 --file "$config_file" --group "$rule_id" --key wmclassmatch 1
+kwriteconfig6 --file "$config_file" --group "$rule_id" --key wmclasscomplete \
+    --type bool false
+kwriteconfig6 --file "$config_file" --group "$rule_id" --key desktopfile \
+    brave-faolnafnngnfdaknnbpnkhgohbobgegn-Default
+kwriteconfig6 --file "$config_file" --group "$rule_id" --key desktopfilerule 2
+
+if command -v qdbus6 >/dev/null; then
+    qdbus6 org.kde.KWin /KWin org.kde.KWin.reconfigure >/dev/null || true
+fi
+{{ end }}

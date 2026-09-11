@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+mode="${1:-}"
+dry_run=0
+[[ "${2:-}" == "--dry-run" ]] && dry_run=1
+
+config_root="${XDG_CONFIG_HOME:-$HOME/.config}/input-remapper-2"
+device="Logitech MX Master 3S"
+preset="handy-desktop"
+
+case "$mode" in
+    game)
+        remap_cmd=(input-remapper-control --config-dir "$config_root/game-mode" --command stop-all)
+        ;;
+    desktop)
+        remap_cmd=(input-remapper-control --config-dir "$config_root" --command start --device "$device" --preset "$preset")
+        ;;
+    *)
+        echo "Usage: ${0##*/} {game|desktop} [--dry-run]" >&2
+        exit 2
+        ;;
+esac
+
+if (( dry_run )); then
+    printf 'Would run:'
+    printf ' %q' "${remap_cmd[@]}"
+    printf '\n'
+    exit 0
+fi
+
+if ! command -v input-remapper-control >/dev/null 2>&1; then
+    echo "input-remapper-control not found; skipping mouse mode change" >&2
+    exit 0
+fi
+
+if ! "${remap_cmd[@]}"; then
+    if [[ "$mode" == "desktop" ]]; then
+        echo "Mouse unavailable; desktop preset will autoload on reconnect" >&2
+        exit 0
+    fi
+    exit 1
+fi

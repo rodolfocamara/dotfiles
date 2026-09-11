@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+set -euo pipefail
+{{- $profile := (index . "profile") | default (ternary "hyprland" "generic" (ne (lookPath "Hyprland") "")) }}
+{{ if eq $profile "kde" }}
+{{- $source_icon := "/usr/share/icons/hicolor/256x256/apps/claude-desktop.png" }}
+# ícone de origem: {{ output "sh" "-c" (printf "sha256sum %s 2>/dev/null | cut -d' ' -f1 || printf missing" $source_icon) | trim }}
+
+dry_run=false
+case "${1:-}" in
+    '') ;;
+    --dry-run) dry_run=true ;;
+    *)
+        echo "uso: ${0##*/} [--dry-run]" >&2
+        exit 2
+        ;;
+esac
+
+# O perfil pessoal preserva a arte laranja do pacote. O de trabalho usa a
+# paleta azul, o motivo pontilhado e a maleta comuns aos outros apps Work.
+source_icon={{ $source_icon }}
+icons_dir=${XDG_DATA_HOME:-"$HOME/.local/share"}/icons/hicolor
+
+{{ include ".chezmoitemplates/work-icon-style.sh" }}
+
+if [[ ! -f "$source_icon" ]]; then
+    echo "claude-profile-icons: ícone de origem não encontrado em $source_icon; ignorando"
+    exit 0
+fi
+
+if ! command -v magick >/dev/null; then
+    echo 'claude-profile-icons: imagemagick não encontrado; ignorando' >&2
+    exit 0
+fi
+
+if ! $dry_run; then
+    temporary_dir=$(mktemp -d)
+    trap 'rm -rf -- "$temporary_dir"' EXIT
+
+    personal_master=$temporary_dir/personal.png
+    work_master=$temporary_dir/work.png
+    personal_master=$source_icon
+    work_icon_make_master "$source_icon" "$work_master" \
+        "$temporary_dir/work-assets" profile
+fi
+
+WORK_ICON_GENERATED=0
+work_icon_render_sizes "${personal_master:-$source_icon}" claude-personal \
+    "$icons_dir" "$dry_run"
+work_icon_render_sizes "${work_master:-$source_icon}" claude-work-office \
+    "$icons_dir" "$dry_run"
+
+if $dry_run; then
+    exit 0
+fi
+
+if [[ $WORK_ICON_GENERATED -gt 0 ]]; then
+    command -v gtk-update-icon-cache >/dev/null &&
+        gtk-update-icon-cache --quiet --force "$icons_dir" 2>/dev/null || true
+    command -v kbuildsycoca6 >/dev/null && kbuildsycoca6 --noincremental || true
+    echo "claude-profile-icons: $WORK_ICON_GENERATED tamanho(s) gerados em $icons_dir"
+fi
+{{ end }}

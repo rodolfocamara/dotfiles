@@ -1,0 +1,22 @@
+[Desktop Entry]
+Name=Claude (Personal)
+Comment=Desktop application for Claude.ai
+GenericName=AI Assistant
+Keywords=AI;Chat;Assistant;Claude;Code;LLM;
+Exec={{ .chezmoi.homeDir }}/.local/bin/claude-desktop %U
+Icon={{ .chezmoi.homeDir }}/.local/share/icons/hicolor/256x256/apps/claude-personal.png
+Type=Application
+StartupNotify=true
+StartupWMClass=com.anthropic.Claude
+SingleMainWindow=true
+Categories=Utility;
+MimeType=x-scheme-handler/claude;
+Actions=NewChat;NewCode;
+
+[Desktop Action NewChat]
+Name=New chat
+Exec={{ .chezmoi.homeDir }}/.local/bin/claude-desktop claude://claude.ai/new
+
+[Desktop Action NewCode]
+Name=New Claude Code session
+Exec={{ .chezmoi.homeDir }}/.local/bin/claude-desktop claude://code/new

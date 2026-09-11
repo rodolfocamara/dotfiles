@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# helper: {{ include "dot_local/bin/executable_agent-context-sync" | sha256sum }}
+
+helper="$HOME/.local/bin/agent-context-sync"
+canonical="${XDG_DATA_HOME:-$HOME/.local/share}/agent-context/AGENTS.md"
+source_file="$HOME/.claude-personal/CLAUDE.md"
+
+if [[ ! -x "$helper" ]]; then
+  echo "agent-context: helper não encontrado em $helper; ignorando"
+  exit 0
+fi
+
+if [[ ! -f "$canonical" && ! -f "$source_file" ]]; then
+  echo 'agent-context: nenhuma memória pessoal encontrada; ignorando'
+  exit 0
+fi
+
+if [[ "${1:-}" == '--dry-run' ]]; then
+  exec "$helper" --dry-run
+fi
+
+exec "$helper"

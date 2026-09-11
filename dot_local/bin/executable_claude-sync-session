@@ -1,20 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
 usage() {
   cat <<'USAGE'
 Usage:
-  claude-sync-session <session-name-or-id> [repo-path] [--from personal|work] [--to personal|work]
+  claude-sync-session <session-name-or-id> [repo-path] [options]
 
 Examples:
   claude-sync-session main
-  claude-sync-session first ~/Repos/missioncontrol
-  claude-sync-session 4721d402-8eb2-4321-8763-90ca4e946143 ~/Repos/missioncontrol --from personal --to work
+  claude-sync-session first ~/Repos/project --with-memory
+  claude-sync-session 4721d402-8eb2-4321-8763-90ca4e946143 --from legacy --to work --with-memory
+
+Options:
+  --from legacy|personal|work
+  --to personal|work
+  --with-memory
+  --dry-run
 
 Defaults:
   --from personal
   --to work
   repo-path = current git repository root, or current directory if not inside git
+
+For a UUID without repo-path, every project in the source profile is searched.
+The legacy profile is ~/.claude, previously used by the personal Desktop app.
 USAGE
 }
 
@@ -25,9 +35,10 @@ fail() {
 
 profile_dir() {
   case "$1" in
+    legacy) printf '%s/.claude\n' "$HOME" ;;
     personal) printf '%s/.claude-personal\n' "$HOME" ;;
     work) printf '%s/.claude-work\n' "$HOME" ;;
-    *) fail "invalid profile '$1' (expected personal or work)" ;;
+    *) fail "invalid profile '$1' (expected legacy, personal, or work)" ;;
   esac
 }
 
@@ -91,6 +102,62 @@ resolve_project_dir() {
   printf '%s\n' "$matched_project_dir"
 }
 
+resolve_session_project_dir() {
+  local src_root="$1"
+  local session_key="$2"
+  local repo_arg="$3"
+  local transcript matched=""
+
+  if is_uuid "$session_key" && [[ -z "$repo_arg" ]]; then
+    while IFS= read -r -d '' transcript; do
+      if [[ -n "$matched" && "$matched" != "$(dirname "$transcript")" ]]; then
+        fail "session '$session_key' exists in multiple source project dirs"
+      fi
+      matched="$(dirname "$transcript")"
+    done < <(find "$src_root/projects" -mindepth 2 -maxdepth 2 \
+      -type f -name "$session_key.jsonl" -print0)
+
+    [[ -n "$matched" ]] || fail "no session '$session_key' found under $src_root/projects"
+    basename "$matched"
+    return 0
+  fi
+
+  resolve_project_dir "$src_root" "$(resolve_repo_path "$repo_arg")"
+}
+
+resolve_memory_project_dir() {
+  local src_root="$1"
+  local session_project_dir="$2"
+  local session_cwd="$3"
+  local candidate base common
+  local -a candidates=("$session_project_dir")
+
+  if [[ -n "$session_cwd" ]]; then
+    candidates+=("$(sanitize_project_dir "$session_cwd")")
+
+    if [[ "$session_cwd" == */.claude/worktrees/* ]]; then
+      base="${session_cwd%%/.claude/worktrees/*}"
+      candidates+=("$(sanitize_project_dir "$base")")
+    fi
+
+    if [[ -d "$session_cwd" ]] && \
+      common="$(git -C "$session_cwd" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"; then
+      if [[ "$common" == */.git ]]; then
+        candidates+=("$(sanitize_project_dir "$(dirname "$common")")")
+      fi
+    fi
+  fi
+
+  for candidate in "${candidates[@]}"; do
+    if [[ -d "$src_root/projects/$candidate/memory" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 session_metadata() {
   local transcript="$1"
   local session_key="$2"
@@ -129,9 +196,9 @@ session_metadata() {
           if (($o.timestamp? // "") != "") then $o.timestamp else .lastTimestamp end
         )
       )
-      | .sessionId = (
-          if .sessionId == "" then ($file | split("/") | .[-1] | sub("\\.jsonl$"; "")) else .sessionId end
-        )
+      # Forks antigos podem reter o ID do pai dentro do transcript. O nome do
+      # arquivo é o ID autoritativo aceito pelo Claude em --resume.
+      | .sessionId = ($file | split("/") | .[-1] | sub("\\.jsonl$"; ""))
       | .title = (
           if .customTitle != "" then .customTitle
           elif .agentName != "" then .agentName
@@ -203,6 +270,7 @@ copy_path() {
   local src_path="$1"
   local dst_path="$2"
   local label="$3"
+  local dry_run="$4"
 
   [[ -e "$src_path" ]] || return 0
 
@@ -215,8 +283,14 @@ copy_path() {
     fail "$label already exists at $dst_path and differs from source"
   fi
 
+  if [[ "$dry_run" == '1' ]]; then
+    printf 'Would copy: %s\n' "$label"
+    return 0
+  fi
+
   mkdir -p "$(dirname "$dst_path")"
   cp -a "$src_path" "$dst_path"
+  chmod -R go-rwx "$dst_path"
   printf 'Copied: %s\n' "$label"
 }
 
@@ -224,6 +298,8 @@ from_profile="personal"
 to_profile="work"
 session_key=""
 repo_arg=""
+with_memory="0"
+dry_run="0"
 
 while (($#)); do
   case "$1" in
@@ -236,6 +312,14 @@ while (($#)); do
       [[ $# -ge 2 ]] || fail "--to requires a value"
       to_profile="$2"
       shift 2
+      ;;
+    --with-memory)
+      with_memory="1"
+      shift
+      ;;
+    --dry-run)
+      dry_run="1"
+      shift
       ;;
     -h|--help)
       usage
@@ -290,10 +374,11 @@ src_root="$(profile_dir "$from_profile")"
 dst_root="$(profile_dir "$to_profile")"
 
 [[ -d "$src_root/projects" ]] || fail "source profile has no projects dir: $src_root/projects"
-mkdir -p "$dst_root/projects"
+if [[ "$dry_run" == '0' ]]; then
+  mkdir -p "$dst_root/projects"
+fi
 
-repo_path="$(resolve_repo_path "$repo_arg")"
-project_dir="$(resolve_project_dir "$src_root" "$repo_path")"
+project_dir="$(resolve_session_project_dir "$src_root" "$session_key" "$repo_arg")"
 
 session_row="$(find_session "$src_root" "$project_dir" "$session_key")"
 IFS=$'\t' read -r session_id session_title session_cwd first_timestamp last_timestamp <<<"$session_row"
@@ -301,25 +386,46 @@ IFS=$'\t' read -r session_id session_title session_cwd first_timestamp last_time
 copy_path \
   "$src_root/projects/$project_dir/$session_id.jsonl" \
   "$dst_root/projects/$project_dir/$session_id.jsonl" \
-  "transcript"
+  "transcript" \
+  "$dry_run"
 
 copy_path \
   "$src_root/projects/$project_dir/$session_id" \
   "$dst_root/projects/$project_dir/$session_id" \
-  "subagents"
+  "subagents" \
+  "$dry_run"
 
 for support_dir in file-history session-env tasks image-cache; do
   copy_path \
     "$src_root/$support_dir/$session_id" \
     "$dst_root/$support_dir/$session_id" \
-    "$support_dir"
+    "$support_dir" \
+    "$dry_run"
 done
 
-printf 'Copied session %s (%s)\n' "$session_id" "${session_title:-unnamed}"
+if [[ "$with_memory" == '1' ]]; then
+  if memory_project_dir="$(resolve_memory_project_dir "$src_root" "$project_dir" "$session_cwd")"; then
+    copy_path \
+      "$src_root/projects/$memory_project_dir/memory" \
+      "$dst_root/projects/$memory_project_dir/memory" \
+      "project memory" \
+      "$dry_run"
+  else
+    printf 'No project memory found; skipping\n'
+  fi
+fi
+
+if [[ "$dry_run" == '1' ]]; then
+  printf 'Planned session %s (%s)\n' "$session_id" "${session_title:-unnamed}"
+else
+  printf 'Copied session %s (%s)\n' "$session_id" "${session_title:-unnamed}"
+fi
 printf 'From %s:%s\n' "$from_profile" "$project_dir"
 printf 'To   %s:%s\n' "$to_profile" "$project_dir"
-printf 'CWD  %s\n' "${session_cwd:-$repo_path}"
+printf 'CWD  %s\n' "${session_cwd:-${repo_arg:-unknown}}"
 printf 'Time %s -> %s\n' "${first_timestamp:-?}" "${last_timestamp:-?}"
 printf '\nResume with:\n'
-printf '  cd %q\n' "${session_cwd:-$repo_path}"
+if [[ -n "$session_cwd" && -d "$session_cwd" ]]; then
+  printf '  cd %q\n' "$session_cwd"
+fi
 printf '  claude-%s --resume %q\n' "$to_profile" "$session_id"

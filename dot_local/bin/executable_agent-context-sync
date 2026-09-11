@@ -1,0 +1,165 @@
+#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+
+readonly context_dir="${XDG_DATA_HOME:-$HOME/.local/share}/agent-context"
+readonly canonical_file="$context_dir/AGENTS.md"
+readonly portable_skills_dir="$context_dir/skills"
+readonly default_source="$HOME/.claude-personal/CLAUDE.md"
+
+usage() {
+  cat <<'USAGE'
+Uso:
+  agent-context-sync [--source FILE] [--dry-run]
+
+Cria uma fonte local e privada de instruções pessoais e skills portáveis e as
+compartilha entre:
+  - Claude Code personal
+  - Claude Code work
+  - Claude Code legado
+  - Codex
+
+O conteúdo não é colocado no repositório dotfiles. Arquivos divergentes nunca
+são sobrescritos; a sincronização para e pede resolução manual.
+
+Cada subdiretório de ~/.local/share/agent-context/skills que contenha SKILL.md
+é compartilhado com os três perfis do Claude e com o diretório de skills do
+Codex.
+USAGE
+}
+
+fail() {
+  printf 'erro: %s\n' "$*" >&2
+  exit 1
+}
+
+source_file="$default_source"
+dry_run=0
+
+while (($#)); do
+  case "$1" in
+    --source)
+      [[ $# -ge 2 ]] || fail '--source exige um caminho'
+      source_file="$2"
+      shift 2
+      ;;
+    --dry-run)
+      dry_run=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      fail "argumento desconhecido: $1"
+      ;;
+  esac
+done
+
+comparison_file="$canonical_file"
+if [[ ! -f "$canonical_file" ]]; then
+  [[ -f "$source_file" ]] || fail "fonte de contexto não encontrada: $source_file"
+  comparison_file="$source_file"
+  printf 'Inicializando contexto compartilhado a partir de %s\n' "$source_file"
+
+  if [[ "$dry_run" == '0' ]]; then
+    install -d -m 700 "$context_dir"
+    temporary="$(mktemp "$context_dir/.AGENTS.md.XXXXXX")"
+    trap 'rm -f "$temporary"' EXIT
+    cp "$source_file" "$temporary"
+    chmod 600 "$temporary"
+    mv "$temporary" "$canonical_file"
+    trap - EXIT
+    comparison_file="$canonical_file"
+  fi
+fi
+
+targets=(
+  "$HOME/.claude/CLAUDE.md"
+  "$HOME/.claude-personal/CLAUDE.md"
+  "$HOME/.claude-work/CLAUDE.md"
+  "$HOME/.codex/AGENTS.md"
+)
+
+timestamp="$(date +%Y%m%d%H%M%S)"
+for target in "${targets[@]}"; do
+  if [[ -L "$target" && "$(readlink -f "$target" 2>/dev/null || true)" == "$canonical_file" ]]; then
+    printf 'Já compartilhado: %s\n' "$target"
+    continue
+  fi
+
+  if [[ -e "$target" || -L "$target" ]]; then
+    if [[ ! -f "$target" ]] || ! cmp -s "$comparison_file" "$target"; then
+      fail "arquivo divergente em $target; faça o merge antes de sincronizar"
+    fi
+  fi
+
+  printf 'Compartilhando: %s -> %s\n' "$target" "$canonical_file"
+  if [[ "$dry_run" == '1' ]]; then
+    continue
+  fi
+
+  # Perfis já existentes preservam o modo gerenciado pelo chezmoi; diretórios
+  # novos nascem 0700 por causa do umask deste processo.
+  mkdir -p "$(dirname "$target")"
+  if [[ -e "$target" || -L "$target" ]]; then
+    chmod 600 "$target"
+    mv "$target" "$target.pre-agent-context.$timestamp"
+  fi
+  ln -s "$canonical_file" "$target"
+done
+
+if [[ -d "$portable_skills_dir" ]]; then
+  skill_targets=(
+    "$HOME/.claude/skills"
+    "$HOME/.claude-personal/skills"
+    "$HOME/.claude-work/skills"
+    "$HOME/.agents/skills"
+  )
+
+  for source_skill in "$portable_skills_dir"/*; do
+    [[ -d "$source_skill" && -f "$source_skill/SKILL.md" ]] || continue
+    skill_name="$(basename "$source_skill")"
+    [[ "$skill_name" =~ ^[a-z0-9][a-z0-9-]{0,63}$ ]] \
+      || fail "nome de skill inválido: $skill_name"
+
+    for target_root in "${skill_targets[@]}"; do
+      target_skill="$target_root/$skill_name"
+      if [[ -L "$target_skill" \
+        && "$(readlink -f "$target_skill" 2>/dev/null || true)" == "$source_skill" ]]; then
+        printf 'Skill já compartilhada: %s\n' "$target_skill"
+        continue
+      fi
+
+      if [[ -e "$target_skill" || -L "$target_skill" ]]; then
+        if [[ ! -d "$target_skill" ]] || ! diff -qr "$source_skill" "$target_skill" >/dev/null; then
+          fail "skill divergente em $target_skill; faça o merge antes de sincronizar"
+        fi
+      fi
+
+      printf 'Compartilhando skill: %s -> %s\n' "$target_skill" "$source_skill"
+      if [[ "$dry_run" == '1' ]]; then
+        continue
+      fi
+
+      mkdir -p "$target_root"
+      if [[ -e "$target_skill" || -L "$target_skill" ]]; then
+        mv "$target_skill" "$target_skill.pre-agent-context.$timestamp"
+      fi
+      ln -s "$source_skill" "$target_skill"
+    done
+  done
+fi
+
+if command -v codex >/dev/null 2>&1; then
+  if codex features list 2>/dev/null | awk '$1 == "memories" && $NF == "true" { found=1 } END { exit !found }'; then
+    printf 'Memórias locais do Codex já estão habilitadas\n'
+  elif [[ "$dry_run" == '1' ]]; then
+    printf 'DRY-RUN: codex features enable memories\n'
+  else
+    codex features enable memories
+  fi
+else
+  printf 'Codex não encontrado; habilitação de memórias ignorada\n'
+fi

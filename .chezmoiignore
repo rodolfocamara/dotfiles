@@ -74,6 +74,14 @@ artifacts/
 .config/menus/applications-merged/trabalho.menu
 .local/share/applications/display-brightness-cycle.desktop
 .local/share/applications/screenshot-region-multiformat.desktop
+.config/gamemode.ini
+.config/input-remapper-2/
+.local/bin/handy-mouse-mode
+.local/bin/claude-desktop
+.local/share/applications/com.anthropic.Claude.desktop
+.local/share/applications/com.anthropic.Claude-work.desktop
+.local/share/applications/brave-hnpfjngllnobngcgfapefoaidbinmjnm-Default.desktop
+.local/share/applications/chrome-teams.cloud.microsoft__-Profile_1.desktop
 {{ end }}
 
 # Ignore Windows-only directories on Linux/macOS.
