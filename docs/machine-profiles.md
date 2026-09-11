@@ -52,6 +52,7 @@ Hyprland numa máquina onde ele ainda não foi instalado).
 |---|---|
 | `.config/hypr/`, `.config/waybar/`, `.config/wofi/`, `.config/kitty/` | só no perfil `hyprland` |
 | `.config/kdeconnect/config` e reparo automático de wake | só no perfil `kde` |
+| wrapper, perfis e atalhos do Claude Desktop | só no perfil `kde` |
 | `packages/pacman.hyprland.txt` | só no perfil `hyprland` |
 | `.wslconfig` | só no Windows — quem lê é o host, em `%USERPROFILE%\.wslconfig` |
 | `etc/wsl.conf` | só dentro do WSL |
@@ -59,6 +60,26 @@ Hyprland numa máquina onde ele ainda não foi instalado).
 O gate de `$profile` também pega o Windows (lá ele resolve para `generic`),
 por isso essas quatro linhas saíram do bloco `{{ if eq .chezmoi.os "windows" }}`
 — estavam duplicando a mesma decisão em dois lugares.
+
+O wrapper do Claude força XWayland somente numa sessão KDE/Wayland. Antes do
+primeiro processo, também espera o KWallet responder: na restauração de sessão,
+o Plasma pode abrir o app enquanto o cofre ainda está subindo, e o Electron
+termina com uma janela parcial e sem conta. Se o cofre não responder dentro do
+limite, o wrapper avisa e não abre uma sessão sem armazenamento seguro.
+
+O launcher do pacote cria um perfil `work` com dados e login isolados em
+`~/.config/Claude-work`. Como o Electron ainda publica a mesma `WM_CLASS` nos
+dois perfis, o wrapper corrige apenas a janela de trabalho no XWayland. Assim o
+Plasma associa os atalhos `Claude (Personal)` e `Claude (Work)` aos ícones
+laranja original e azul pontilhado com maleta, gerados a partir da arte
+instalada pelo pacote, sem alterar o `app.asar` nem misturar os diretórios de
+estado.
+
+O Brave segue a mesma convenção: o perfil pessoal conserva o ícone laranja do
+pacote, enquanto `Brave (Work — Browser)` e `Apps (Trabalho)` usam uma variante
+azul pontilhada com maleta. A mesma assinatura visual marca os atalhos Work de
+Claude, Outlook, Teams e Azure DevOps. Os ícones são regenerados das artes
+instaladas em todos os tamanhos usados pelo Plasma.
 
 ## Os pacotes seguem o mesmo perfil
 
@@ -68,10 +89,10 @@ lista única e o `install-packages.linux-arch.sh` instalava o compositor
 inteiro — Hyprland, hyprpaper, hyprlock, hypridle, waybar, wofi, kitty, grim,
 slurp, portal — numa máquina que nunca ia subir nenhum deles.
 
-Agora a lista é `pacman.txt` (base, vale em qualquer Arch) mais
-`pacman.<profile>.txt`, se existir. Só o `hyprland` tem arquivo hoje; um
-`pacman.kde.txt` passa a valer sozinho no dia que houver algo exclusivo do
-KDE — o script não precisa mudar.
+Agora as listas são `pacman.txt` e `aur.txt` (base, valem em qualquer Arch),
+mais `pacman.<profile>.txt` e `aur.<profile>.txt`, quando existirem. O
+`input-remapper`, por exemplo, fica em `aur.kde.txt` porque atende uma automação
+do mouse específica do desktop KDE.
 
 O script resolve o perfil na mesma ordem que o template: `DOTFILES_PROFILE`
 no ambiente, senão o `.chezmoidata.toml`, senão o binário do Hyprland no

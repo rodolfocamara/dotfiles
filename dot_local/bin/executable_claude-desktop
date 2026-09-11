@@ -1,0 +1,159 @@
+#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+
+readonly system_launcher=/usr/bin/claude-desktop
+[[ ! -x "$HOME/.npm-global/bin/claude" ]] || export CLAUDE_CODE_LOCAL_BINARY="$HOME/.npm-global/bin/claude"
+
+if [[ "${1:-}" == '--dry-run' ]]; then
+    shift
+    printf 'DRY-RUN: exec %q' "$system_launcher"
+    printf ' %q' "$@"
+    printf '\n'
+    exit 0
+fi
+
+if [[ ! -x "$system_launcher" ]]; then
+    printf 'claude-desktop: launcher do sistema não encontrado em %s; ignorando\n' "$system_launcher" >&2
+    exit 0
+fi
+
+# O terminal embutido não responde ao DA1 que o Fish 4.1+ consulta antes do
+# prompt; sem o fallback, cada reconexão espera 10 s e imprime um aviso.
+fish_features="${fish_features:-}"
+fish_features="${fish_features// /,}"
+case ",${fish_features}," in
+    *,no-query-term,*) ;;
+    *) fish_features="${fish_features:+${fish_features},}no-query-term" ;;
+esac
+export fish_features
+
+kwallet_backend() {
+    local enabled object service version
+
+    for version in 6 5; do
+        service="org.kde.kwalletd${version}"
+        object="/modules/kwalletd${version}"
+        enabled="$(busctl --user --no-pager --timeout=1 call \
+            "$service" "$object" org.kde.KWallet isEnabled 2>/dev/null)" || continue
+        [[ "$enabled" == 'b true' ]] || continue
+        busctl --user --no-pager --timeout=1 call \
+            "$service" "$object" org.kde.KWallet wallets &>/dev/null || continue
+        [[ "$(busctl --user --no-pager --timeout=1 get-property org.freedesktop.secrets /org/freedesktop/secrets/aliases/default org.freedesktop.Secret.Collection Locked 2>/dev/null)" == 'b false' ]] || continue
+        printf 'kwallet%s\n' "$version"
+        return 0
+    done
+
+    return 1
+}
+
+wait_for_kwallet() {
+    local attempt backend
+
+    for ((attempt = 1; attempt <= 10; attempt++)); do
+        if backend="$(kwallet_backend)"; then
+            printf '%s\n' "$backend"
+            return 0
+        fi
+        sleep 1
+    done
+
+    return 1
+}
+
+profile_from_args() {
+    local argument
+    local next_is_profile=0
+
+    for argument in "$@"; do
+        if ((next_is_profile)); then
+            printf '%s\n' "$argument"
+            return 0
+        fi
+
+        case "$argument" in
+            --profile=*)
+                printf '%s\n' "${argument#--profile=}"
+                return 0
+                ;;
+            --profile)
+                next_is_profile=1
+                ;;
+        esac
+    done
+}
+
+active_profile="${CLAUDE_PROFILE:-}"
+argument_profile="$(profile_from_args "$@")"
+[[ -n "$argument_profile" ]] && active_profile="$argument_profile"
+
+if [[ -n "$active_profile" && "$active_profile" != 'default' ]]; then
+    export CLAUDE_CONFIG_DIR="$HOME/.claude-$active_profile"
+else
+    active_profile=""
+    export CLAUDE_CONFIG_DIR="$HOME/.claude-personal"
+fi
+
+# O Desktop e os wrappers explícitos precisam prevalecer sobre o roteamento
+# automático por repositório feito pelo comando `claude`.
+export CLAUDE_PROFILE_EXPLICIT=1
+
+set_profile_window_identity() {
+    local profile="$1"
+    local expected_binary="$HOME/.local/lib/claude-desktop/claude-$profile"
+    local identity="com.anthropic.Claude-$profile"
+    local attempt window_id pid executable
+
+    # O app.asar fixa a mesma WM_CLASS em todos os perfis. No XWayland, mudar
+    # a propriedade assim que a janela nasce permite ao Plasma associar cada
+    # instância ao .desktop e ao ícone corretos sem alterar o pacote instalado.
+    for ((attempt = 1; attempt <= 100; attempt++)); do
+        while read -r window_id; do
+            window_id="${window_id//[[:space:]]/}"
+            [[ -n "$window_id" ]] || continue
+
+            pid="$(xprop -id "$window_id" _NET_WM_PID 2>/dev/null |
+                awk -F' = ' '/ = / { print $2; exit }')"
+            [[ "$pid" =~ ^[0-9]+$ ]] || continue
+
+            executable="$(readlink -f "/proc/$pid/exe" 2>/dev/null || true)"
+            [[ "$executable" == "$expected_binary" ]] || continue
+
+            xprop -id "$window_id" -f WM_CLASS 8s -set WM_CLASS "$identity"
+            return 0
+        done < <(xprop -root _NET_CLIENT_LIST 2>/dev/null |
+            sed 's/.*# //' | tr ',' '\n')
+
+        sleep 0.1
+    done
+}
+
+desktop="${XDG_CURRENT_DESKTOP:-}"
+if [[ "${XDG_SESSION_TYPE:-}" == 'wayland' && "${desktop,,}" == *kde* ]]; then
+    # O backend nativo deixa a BrowserView com bounds obsoletos no KWin; o
+    # XWayland mantém a janela inteira sem desabilitar a aceleração gráfica.
+    export CLAUDE_USE_XWAYLAND="${CLAUDE_USE_XWAYLAND:-1}"
+
+    # Durante a restauração da sessão, o Plasma abre o Claude junto com o
+    # kwalletd. Se o Electron vencer a corrida, duas chamadas D-Bus bloqueiam
+    # por 25 s e o app segue sem conta nem armazenamento seguro.
+    if [[ -z "${CLAUDE_PASSWORD_STORE:-}" ]] &&
+        ! pgrep -u "$(id -u)" -f '^/usr/lib/claude-desktop-bin/claude( |$)' &>/dev/null; then
+        if backend="$(wait_for_kwallet)"; then
+            export CLAUDE_PASSWORD_STORE="$backend"
+        else
+            message='KWallet não respondeu; o Claude não foi iniciado para evitar uma sessão parcial e segredos sem criptografia. Tente novamente após o Plasma terminar de carregar.'
+            printf 'claude-desktop: %s\n' "$message" >&2
+            if command -v notify-send &>/dev/null; then
+                notify-send --app-name='Claude Desktop' 'Claude Desktop não iniciado' "$message"
+            fi
+            exit 0
+        fi
+    fi
+
+    if [[ "$active_profile" =~ ^[a-zA-Z0-9_-]+$ ]] && command -v xprop &>/dev/null; then
+        set_profile_window_identity "$active_profile" &
+    fi
+fi
+
+exec "$system_launcher" "$@"

@@ -1,0 +1,6 @@
+# Remapeia o Mouse 5 para o atalho do Handy no desktop. O GameMode restaura o
+# botão original enquanto jogos estão ativos.
+input-remapper
+
+# Navegador principal; os perfis pessoal e Work usam data dirs isolados.
+google-chrome

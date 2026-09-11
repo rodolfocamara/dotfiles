@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+find_real_claude() {
+  local candidate resolved self
+  self="$(readlink -f "$0")"
+
+  while IFS= read -r candidate; do
+    [[ -x "$candidate" ]] || continue
+    resolved="$(readlink -f "$candidate")"
+    [[ "$resolved" == "$self" ]] && continue
+    printf '%s\n' "$candidate"
+    return 0
+  done < <(type -aP claude 2>/dev/null)
+
+  return 1
+}
+
+profile=""
+if [[ "${CLAUDE_PROFILE_EXPLICIT:-}" == '1' ]]; then
+  profile="explicit"
+elif [[ -n "${CLAUDE_PROFILE:-}" && "${CLAUDE_PROFILE}" != 'default' ]]; then
+  profile="$CLAUDE_PROFILE"
+elif [[ -x "$HOME/.local/bin/claude-profile" ]]; then
+  profile="$("$HOME/.local/bin/claude-profile" resolve "$PWD" 2>/dev/null || true)"
+fi
+
+case "$profile" in
+  explicit)
+    ;;
+  personal|work)
+    export CLAUDE_CONFIG_DIR="$HOME/.claude-$profile"
+    ;;
+  '')
+    export CLAUDE_CONFIG_DIR="$HOME/.claude-personal"
+    ;;
+  *)
+    printf 'claude: perfil inválido resolvido para este projeto: %s\n' "$profile" >&2
+    exit 2
+    ;;
+esac
+
+# Langfuse OTLP telemetry, work profile only. These have to be real environment
+# variables on the claude process: the settings.json "env" block is applied
+# after the OTel SDK initializes, so configuring them there never enables
+# tracing. Personal sessions never reach this branch.
+otel_env="$HOME/.claude-work/otel-langfuse.env"
+if [[ "${CLAUDE_CONFIG_DIR:-}" == "$HOME/.claude-work" && -r "$otel_env" ]]; then
+  set -a
+  # shellcheck source=/dev/null
+  source "$otel_env"
+  set +a
+fi
+
+real_claude="$(find_real_claude)" || {
+  printf 'claude: binário real não encontrado depois do wrapper em ~/.local/bin\n' >&2
+  exit 127
+}
+
+exec "$real_claude" "$@"

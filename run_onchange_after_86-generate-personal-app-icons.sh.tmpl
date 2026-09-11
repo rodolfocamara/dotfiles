@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -euo pipefail
+{{- $profile := (index . "profile") | default (ternary "hyprland" "generic" (ne (lookPath "Hyprland") "")) }}
+{{ if and (eq .chezmoi.os "linux") (eq $profile "kde") }}
+
+source_root=${XDG_CONFIG_HOME:-"$HOME/.config"}/BraveSoftware/Brave-Browser/Default/'Web Applications/Manifest Resources'
+source_icon=$source_root/hnpfjngllnobngcgfapefoaidbinmjnm/Icons/256.png
+icons_dir=${XDG_DATA_HOME:-"$HOME/.local/share"}/icons/hicolor
+icon_name=whatsappweb
+
+[[ -f "$source_icon" ]] || exit 0
+command -v magick >/dev/null || exit 0
+
+generated=0
+temporary_dir=$(mktemp -d)
+trap 'rm -rf -- "$temporary_dir"' EXIT
+
+for size in 16 24 32 48 64 128 256; do
+    target_dir=$icons_dir/${size}x${size}/apps
+    target_file=$target_dir/$icon_name.png
+    temporary_file=$temporary_dir/$size.png
+    mkdir -p "$target_dir"
+    magick "$source_icon" -resize "${size}x${size}" PNG32:"$temporary_file"
+
+    if [[ ! -f "$target_file" ]] || ! cmp -s "$temporary_file" "$target_file"; then
+        install -m 0644 "$temporary_file" "$target_file"
+        generated=$((generated + 1))
+    fi
+done
+
+if [[ $generated -gt 0 ]]; then
+    command -v gtk-update-icon-cache >/dev/null &&
+        gtk-update-icon-cache --quiet --force "$icons_dir" 2>/dev/null || true
+    command -v kbuildsycoca6 >/dev/null && kbuildsycoca6 --noincremental || true
+    echo "personal-app-icons: $generated tamanho(s) gerados em $icons_dir"
+fi
+{{ end }}

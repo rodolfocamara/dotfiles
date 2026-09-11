@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=Claude (Work)
+Comment=Desktop application for Claude.ai
+GenericName=AI Assistant
+Keywords=AI;Chat;Assistant;Claude;Code;LLM;
+Exec={{ .chezmoi.homeDir }}/.local/bin/claude-desktop --profile=work %U
+Icon={{ .chezmoi.homeDir }}/.local/share/icons/hicolor/256x256/apps/claude-work-office.png
+Type=Application
+StartupNotify=true
+StartupWMClass=com.anthropic.Claude-work
+SingleMainWindow=true
+Categories=Utility;

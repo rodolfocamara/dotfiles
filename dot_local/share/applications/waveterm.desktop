@@ -2,7 +2,15 @@
 Name=Wave
 GenericName=Graphical Terminal Workspace
 Comment=Terminal, web previews, editors, and AI workspaces
-Exec=/opt/Wave/waveterm --enable-features UseOzonePlatform --ozone-platform-hint auto %U
+# Upstream ships "--enable-features UseOzonePlatform --ozone-platform-hint auto".
+# Two changes here:
+#   - "=" instead of a space: Chromium only parses --enable-features=VALUE; with a
+#     space the value became a stray positional arg and the flag was empty.
+#   - WaylandWpColorManagerV1 disabled: Electron 41 fails to negotiate colour
+#     management against Plasma 6.7, spamming "Unable to set image transfer
+#     function" during startup. Suspected cause of the ~10s cold-start stall
+#     before the first shell prompt renders.
+Exec=/opt/Wave/waveterm --enable-features=UseOzonePlatform --ozone-platform=wayland --disable-features=WaylandWpColorManagerV1 %U
 TryExec=/opt/Wave/waveterm
 Terminal=false
 Type=Application

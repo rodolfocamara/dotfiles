@@ -1,7 +1,7 @@
 # Mouse Bluetooth depois do wake
 
 O mouse desta máquina é um Logitech MX Master 3S Bluetooth LE, endereço
-`DC:8E:F7:60:E6:59`, ligado ao adaptador Intel AX211 (`btusb`).
+`DC:8E:F7:60:E6:5B`, ligado ao adaptador Intel AX211 (`btusb`).
 
 ## Assinatura da falha
 
@@ -34,7 +34,7 @@ conserto para 26.08: <https://bugs.kde.org/show_bug.cgi?id=516170>.
 ## Recuperação manual
 
 ```bash
-fix-bluetooth-mouse DC:8E:F7:60:E6:59
+fix-bluetooth-mouse DC:8E:F7:60:E6:5B
 ```
 
 O comando segue esta ordem:

@@ -9,7 +9,7 @@ ConditionEnvironment=XDG_CURRENT_DESKTOP=KDE
 Type=simple
 Environment=FIX_MONITOR_TARGET=HDMI-A-1
 Environment=FIX_MONITOR_DELAY_SECONDS=5
-Environment=FIX_BLUETOOTH_MOUSE=DC:8E:F7:60:E6:59
+Environment=FIX_BLUETOOTH_MOUSE=DC:8E:F7:60:E6:5B
 Environment=DISPLAY_BRIGHTNESS_QUIET=1
 ExecStart=%h/.local/bin/fix-monitor-after-resume
 ExecStartPost=-%h/.local/bin/display-brightness-cycle restore

@@ -48,13 +48,16 @@ profile_file="$source_dir/packages/pacman.$profile.txt"
 list=$(grep -hEv '^[[:space:]]*(#|$)' "${files[@]}")
 [[ -z "$list" ]] && { echo "No packages in ${files[*]}"; exit 0; }
 
-# packages/aur.txt é opcional e costuma ficar vazio — só entra aqui o que não
-# existe nos repos oficiais. Fica separado porque o pacman não sabe instalar
-# do AUR: precisa de um helper, e numa máquina sem helper o resto da lista
-# ainda deve ser instalado normalmente.
+# Os manifests do AUR seguem o mesmo perfil dos manifests do pacman. Ficam
+# separados porque o pacman não instala do AUR: precisa de um helper, e numa
+# máquina sem helper o resto da lista ainda deve ser instalado normalmente.
+aur_files=()
 aur_file="$source_dir/packages/aur.txt"
+[[ -f "$aur_file" ]] && aur_files+=("$aur_file")
+profile_aur_file="$source_dir/packages/aur.$profile.txt"
+[[ -f "$profile_aur_file" ]] && aur_files+=("$profile_aur_file")
 aur_list=""
-[[ -f "$aur_file" ]] && aur_list=$(grep -hEv '^[[:space:]]*(#|$)' "$aur_file" || true)
+(( ${#aur_files[@]} > 0 )) && aur_list=$(grep -hEv '^[[:space:]]*(#|$)' "${aur_files[@]}" || true)
 
 aur_helper=""
 for h in paru yay; do
@@ -63,7 +66,10 @@ done
 
 echo "Profile: $profile"
 for f in "${files[@]}"; do echo "  + ${f#"$source_dir"/}"; done
-[[ -n "$aur_list" ]] && echo "  + packages/aur.txt (via ${aur_helper:-nenhum helper})"
+if [[ -n "$aur_list" ]]; then
+    for f in "${aur_files[@]}"; do echo "  + ${f#"$source_dir"/}"; done
+    echo "    via ${aur_helper:-nenhum helper}"
+fi
 
 if (( dry_run )); then
     echo "--- would install ($(echo "$list" | wc -l) packages) ---"

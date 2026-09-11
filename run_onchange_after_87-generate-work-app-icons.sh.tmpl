@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+set -euo pipefail
+{{- $profile := (index . "profile") | default (ternary "hyprland" "generic" (ne (lookPath "Hyprland") "")) }}
+{{ if eq $profile "kde" }}
+
+dry_run=false
+case "${1:-}" in
+    '') ;;
+    --dry-run) dry_run=true ;;
+    *)
+        echo "uso: ${0##*/} [--dry-run]" >&2
+        exit 2
+        ;;
+esac
+
+icons_dir=${XDG_DATA_HOME:-"$HOME/.local/share"}/icons/hicolor
+profile_root=${XDG_CONFIG_HOME:-"$HOME/.config"}/BraveSoftware/Brave-Browser-Work/Default
+manifest_root=$profile_root/'Web Applications/Manifest Resources'
+
+{{ include ".chezmoitemplates/work-icon-style.sh" }}
+
+claude_source=$manifest_root/fmpnliohjhemenmnlpbfagaolkdacoja/Icons/256.png
+outlook_source=$manifest_root/faolnafnngnfdaknnbpnkhgohbobgegn/Icons/256.png
+teams_source=$manifest_root/ompifgpmddkgmclendfeacglnodjjndh/Icons/256.png
+development_source=$(kiconfinder6 applications-development 2>/dev/null || true)
+
+sources=(
+    "$claude_source|claude-work-pwa"
+    "$outlook_source|outlook-work"
+    "$teams_source|teamswork"
+    "$development_source|azure-devops-work"
+)
+
+temporary_dir=
+if ! $dry_run; then
+    temporary_dir=$(mktemp -d)
+    trap 'rm -rf -- "$temporary_dir"' EXIT
+fi
+
+WORK_ICON_GENERATED=0
+for entry in "${sources[@]}"; do
+    source_icon=${entry%%|*}
+    icon_name=${entry#*|}
+
+    if [[ -z "$source_icon" || ! -f "$source_icon" ]]; then
+        echo "work-app-icons: origem de $icon_name não encontrada; ignorando"
+        continue
+    fi
+
+    if $dry_run; then
+        work_icon_render_sizes "$source_icon" "$icon_name" "$icons_dir" true
+        continue
+    fi
+
+    master=$temporary_dir/$icon_name.png
+    work_icon_make_master "$source_icon" "$master" \
+        "$temporary_dir/$icon_name-assets" application
+    work_icon_render_sizes "$master" "$icon_name" "$icons_dir" false
+done
+
+if $dry_run; then
+    exit 0
+fi
+
+if [[ $WORK_ICON_GENERATED -gt 0 ]]; then
+    command -v gtk-update-icon-cache >/dev/null &&
+        gtk-update-icon-cache --quiet --force "$icons_dir" 2>/dev/null || true
+    command -v kbuildsycoca6 >/dev/null && kbuildsycoca6 --noincremental || true
+    echo "work-app-icons: $WORK_ICON_GENERATED tamanho(s) gerados em $icons_dir"
+fi
+{{ end }}

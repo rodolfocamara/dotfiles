@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=WhatsApp Web
+Comment=WhatsApp no perfil pessoal do Chrome
+Terminal=false
+Exec={{ .chezmoi.homeDir }}/.local/bin/chrome-profile personal --profile-directory=Default --app=https://web.whatsapp.com/
+Icon=whatsappweb
+StartupWMClass=chrome-web.whatsapp.com__-Default
+Categories=Network;Chat;InstantMessaging;
+StartupNotify=true

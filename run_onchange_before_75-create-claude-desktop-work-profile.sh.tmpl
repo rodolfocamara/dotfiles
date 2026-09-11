@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+set -euo pipefail
+{{- $profile := (index . "profile") | default (ternary "hyprland" "generic" (ne (lookPath "Hyprland") "")) }}
+{{ if eq $profile "kde" }}
+{{- $launcher := "/usr/bin/claude-desktop" }}
+# launcher do pacote: {{ output "sh" "-c" (printf "sha256sum %s 2>/dev/null | cut -d' ' -f1 || printf missing" $launcher) | trim }}
+
+dry_run=false
+case "${1:-}" in
+    '') ;;
+    --dry-run) dry_run=true ;;
+    *)
+        echo "uso: ${0##*/} [--dry-run]" >&2
+        exit 2
+        ;;
+esac
+
+launcher={{ $launcher }}
+if [[ ! -x "$launcher" ]]; then
+    echo "claude-desktop-profile: launcher não encontrado em $launcher; ignorando"
+    exit 0
+fi
+
+launcher_help=$("$launcher" --help 2>&1 || true)
+if [[ "$launcher_help" != *--create-profile* ]]; then
+    echo "claude-desktop-profile: o launcher instalado não suporta perfis; ignorando"
+    exit 0
+fi
+
+if "$launcher" --list-profiles 2>/dev/null | grep -q '^work  '; then
+    echo 'claude-desktop-profile: perfil work já existe'
+elif $dry_run; then
+    echo "DRY-RUN: $launcher --create-profile=work"
+else
+    "$launcher" --create-profile=work
+fi
+
+theme=catppuccin-mocha
+theme_dir="${XDG_CONFIG_HOME:-$HOME/.config}/Claude-work"
+theme_file="$theme_dir/claude-desktop-bin.json"
+
+if ! command -v jq &>/dev/null; then
+    echo 'claude-desktop-profile: jq não encontrado; tema não alterado' >&2
+    exit 0
+fi
+
+if [[ -f "$theme_file" ]] && ! jq empty "$theme_file" 2>/dev/null; then
+    echo "claude-desktop-profile: configuração inválida em $theme_file; tema não alterado" >&2
+    exit 0
+fi
+
+current_theme="$(jq -r '.activeTheme // empty' "$theme_file" 2>/dev/null || true)"
+if [[ "$current_theme" == "$theme" ]]; then
+    echo "claude-desktop-profile: tema $theme já está ativo no perfil work"
+    exit 0
+fi
+
+if $dry_run; then
+    echo "DRY-RUN: definir activeTheme=$theme em $theme_file"
+    exit 0
+fi
+
+umask 077
+mkdir -p "$theme_dir"
+temp_file="$(mktemp "$theme_dir/.claude-theme.XXXXXX")"
+trap 'rm -f "$temp_file"' EXIT
+
+if [[ -f "$theme_file" ]]; then
+    jq --arg theme "$theme" '.activeTheme = $theme' "$theme_file" > "$temp_file"
+else
+    jq -n --arg theme "$theme" '{activeTheme: $theme}' > "$temp_file"
+fi
+
+chmod 600 "$temp_file"
+mv -f -- "$temp_file" "$theme_file"
+trap - EXIT
+echo "claude-desktop-profile: tema $theme ativado no perfil work"
+{{ end }}
