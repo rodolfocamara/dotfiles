@@ -122,6 +122,12 @@ scripts/install-packages.windows.ps1
 # wofi, kitty), cortado pelo gate de $profile lá em cima, que já pega o
 # Windows junto; e etc/, ignorado em todo OS, também lá em cima.
 {{ if eq .chezmoi.os "windows" }}
+# Manutenção de disco: roda como systemd --user timer (Linux). No Windows
+# não existe --user nem podman rootless; os caches de toolchain do WSL são
+# outro filesystem. Ver docs/disk-maintenance.md.
+.local/bin/disk-maintenance
+.config/systemd/user/disk-maintenance.service
+.config/systemd/user/disk-maintenance.timer
 .config/direnv/
 .envrc
 .zshenv

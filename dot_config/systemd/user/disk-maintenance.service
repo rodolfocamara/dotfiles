@@ -1,0 +1,10 @@
+[Unit]
+Description=Disk maintenance: user caches and podman orphans
+# Evita rodar junto com workload pesado de boot; roda pós-sessão gráfica.
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/disk-maintenance
+# Caches grandes: não vale matar no meio da poda do overlay.
+TimeoutStartSec=1h
