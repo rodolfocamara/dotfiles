@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+{{ if eq .chezmoi.os "linux" }}
+# O timer precisa de reload explícito: o --user não observa arquivos novos.
+systemctl --user daemon-reload
+systemctl --user enable --now disk-maintenance.timer
+{{ end }}
