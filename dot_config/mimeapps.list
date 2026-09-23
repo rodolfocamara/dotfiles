@@ -1,6 +1,8 @@
+# firefox foi removido da máquina KDE em 2026-02; referenciá-lo aqui deixou o
+# PDF sem destino no xdg-open. Chrome abre PDF e existe em todo alvo Linux.
 [Added Associations]
 application/json=dev.zed.Zed.desktop;
-application/pdf=firefox.desktop;brave-browser.desktop;
+application/pdf=google-chrome.desktop;brave-browser.desktop;
 application/x-docbook+xml=dev.zed.Zed.desktop;
 application/x-yaml=dev.zed.Zed.desktop;
 text/markdown=dev.zed.Zed.desktop;
@@ -12,7 +14,7 @@ x-scheme-handler/t3code=t3code.desktop;
 
 [Default Applications]
 application/json=dev.zed.Zed.desktop;
-application/pdf=firefox.desktop;
+application/pdf=google-chrome.desktop;
 application/x-docbook+xml=dev.zed.Zed.desktop;
 application/x-yaml=dev.zed.Zed.desktop;
 text/markdown=nvim-kitty.desktop
