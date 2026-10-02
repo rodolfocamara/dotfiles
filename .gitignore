@@ -19,3 +19,6 @@ artifacts/
 debug.log
 __pycache__/
 *.pyc
+
+# worktrees de sessões do Claude Code
+.claude/worktrees/
