@@ -37,52 +37,50 @@ o mesmo perfil vale para todas as worktrees.
 `claude-personal` e `claude-work` continuam disponíveis para uma escolha
 explícita e sempre prevalecem sobre o mapeamento.
 
-## Contexto compartilhado com o Codex
+## Contexto compartilhado entre agentes
 
-`agent-context-sync` transforma as instruções pessoais existentes em uma fonte
-local única, armazenada em `~/.local/share/agent-context/AGENTS.md` com modo
-`0600`. Os arquivos abaixo passam a apontar para ela:
+`agent-context-sync` mantém uma fonte local e privada, fora deste repositório, em
+`~/.local/share/agent-context/` (git local, modo `0700`):
 
-- `~/.claude/CLAUDE.md`
-- `~/.claude-personal/CLAUDE.md`
-- `~/.claude-work/CLAUDE.md`
-- `~/.codex/AGENTS.md`
+- `AGENTS.md`: instruções pessoais. Vira, por symlink, o `CLAUDE.md` de cada perfil do
+  Claude Code (`~/.claude`, `~/.claude-personal`, `~/.claude-work`, `~/.claude-glm`), o
+  `~/.codex/AGENTS.md`, o `~/.config/opencode/AGENTS.md` e o `~/.gemini/GEMINI.md`.
+  Ferramenta ausente na máquina fica de fora.
+- `skills/<grupo>/<nome>/SKILL.md`: skills, em dois grupos.
 
-O conteúdo não é versionado. Se algum destino já existir com conteúdo diferente,
-o helper aborta em vez de sobrescrever. Arquivos equivalentes recebem um backup
-local antes de virarem links. O helper também habilita as memórias locais do
-Codex quando o recurso está disponível.
+| Grupo | Destinos |
+|---|---|
+| `comum` | `~/.agents/skills` e os perfis personal, work e glm do Claude Code |
+| `trabalho` | `~/.agents/skills` e os perfis personal e work do Claude Code |
 
-Essa camada contém preferências e instruções estáveis. As memórias automáticas
-continuam nativas de cada ferramenta: Claude grava Markdown por repositório e o
-Codex mantém seu próprio estado gerado. Elas não são ligadas diretamente porque
-os formatos e os ciclos de consolidação são diferentes.
+`~/.agents/skills` é lido por Codex, Cursor, Gemini e OpenCode. O Claude Code não lê esse
+caminho, por isso recebe os links no próprio perfil. Cada skill ganha um link próprio:
+um diretório de skills inteiro como symlink faria um perfil herdar as skills de outro, e o
+helper converte esse caso em diretório real. Links para skills que saíram da fonte, ou do
+grupo daquele destino, são removidos. Arquivo divergente nunca é sobrescrito: o helper
+aborta e pede resolução manual. `~/.claude/skills` fica vazio de propósito, porque Cursor e
+OpenCode também leem esse caminho e mostrariam cada skill duas vezes.
 
-Skills que precisam ter o mesmo comportamento nos três perfis ficam fora deste
-repositório, em `~/.local/share/agent-context/skills/<nome>/SKILL.md`. O mesmo
-helper cria links para:
+Skill que depende de um repositório mora no próprio repositório, em
+`.agents/skills/<nome>/`, com `.claude/skills/<nome>` como symlink relativo. Este repo faz
+isso com `dotfiles-change`. O chezmoi ignora pastas que começam com ponto, então elas não
+vão para o home.
 
-- `~/.claude/skills`
-- `~/.claude-personal/skills`
-- `~/.claude-work/skills`
-- `~/.agents/skills`
+As memórias automáticas continuam nativas de cada ferramenta. O helper só habilita as
+memórias locais do Codex quando o recurso existe.
 
-Isso mantém uma única cópia privada da instrução e usa o diretório de skills de
-usuário reconhecido pelo Codex. O helper só aceita nomes portáveis em letras
-minúsculas, números e hífens e aborta diante de conteúdo divergente.
+### Segredos usados por skills
 
-Esses links cobrem Claude Code e Codex locais. O Chat comum do Claude Desktop
-armazena skills e conectores remotos na conta: uma skill portável precisa ser
-empacotada com sua pasta como raiz do ZIP e enviada em `Customize > Skills`;
-um MCP remoto precisa ser conectado em `Customize > Connectors`. Em planos
-gerenciados, a organização pode exigir habilitação prévia por um Owner.
+`agent-secret` entrega um segredo do Bitwarden (via `rbw`, ou `bw` com
+`AGENT_SECRET_BACKEND=bw`) a um comando sem exibi-lo. A skill cita só o nome do item:
 
-Nos repositórios, `AGENTS.md` é a fonte canônica para Codex. Um `CLAUDE.md` curto
-deve importá-la para Claude:
-
-```markdown
-@AGENTS.md
+```bash
+PGPASSWORD=$(agent-secret get <item>)        # só capturado em variável
+agent-secret exec PGPASSWORD=<item> -- psql …  # ou injetado no ambiente do comando
+agent-secret check <item> <item>:username      # confere sem mostrar
 ```
+
+Campos: `password` (padrão), `username`, `notes` ou uma chave `chave=valor` das notas.
 
 ## Desktop e estado legado
 
@@ -167,18 +165,6 @@ When using `CLAUDE_CONFIG_DIR`, keep custom skills inside the split profile dirs
 Legacy `~/.claude/skills` is outside the split and may not be discovered
 consistently once the shell points Claude at `~/.claude-personal` or
 `~/.claude-work`.
-
-To merge legacy/shared Claude-only skills and keep both Claude profiles aligned:
-
-```bash
-claude-sync-skills
-```
-
-This sync copies only custom skills and top-level local plugin skills. It does
-not touch conversations, session state, or plugin caches. Prefer
-`agent-context-sync` for a new skill that is deliberately compatible with both
-Claude and Codex; reserve `claude-sync-skills` for existing Claude-specific
-material after reviewing it for conflicts and secrets.
 
 ## Windows install
 
