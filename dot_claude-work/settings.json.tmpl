@@ -12,13 +12,20 @@
     "type": "command",
     "command": "bash \"$HOME/.local/bin/claude-statusline\""
   },
+  "deniedMcpServers": [
+    { "serverName": "claude.ai Canva" },
+    { "serverName": "claude.ai Figma" },
+    { "serverName": "claude.ai Gmail" },
+    { "serverName": "claude.ai Google Calendar" },
+    { "serverName": "claude.ai Claude Docs" }
+  ],
   "enabledPlugins": {
     "chrome-devtools-mcp@claude-plugins-official": false,
     "claude-md-management@claude-plugins-official": true,
     "code-review@claude-plugins-official": true,
     "code-simplifier@claude-plugins-official": false,
     "commit-commands@claude-plugins-official": false,
-    "context7@claude-plugins-official": true,
+    "context7@claude-plugins-official": false,
     "feature-dev@claude-plugins-official": true,
     "firecrawl@claude-plugins-official": false,
     "frontend-design@claude-plugins-official": true,
