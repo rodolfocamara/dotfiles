@@ -4,3 +4,6 @@ input-remapper
 
 # Navegador principal; os perfis pessoal e Work usam data dirs isolados.
 google-chrome
+
+# Planilhas: o mimeapps.list aponta xlsx, ods e csv para ele.
+onlyoffice-bin
