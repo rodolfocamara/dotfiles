@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=T3 Code Stable (Recovery)
+Comment=Previous stable version with the original V1 history
+Exec=/usr/bin/t3code %U
+TryExec=/usr/bin/t3code
+Icon=t3code
+Terminal=false
+Categories=Development;

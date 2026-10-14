@@ -1,0 +1,146 @@
+#!/usr/bin/env python3
+"""Retoma a janela mais recente de um aplicativo no KDE, sem duplicá-la."""
+
+import argparse
+import fcntl
+import json
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+
+APPS = {
+    "t3": {"desktop": "t3code", "classes": ["com.t3tools.t3code", "t3code"]},
+    "work": {"desktop": "brave-work-browser", "classes": ["brave-work-browser"]},
+    "personal": {"desktop": "brave-browser", "classes": ["brave-browser"]},
+    "teams": {
+        "desktop": "brave-teams-work",
+        "classes": ["chrome-teams.cloud.microsoft__-profile_1"],
+    },
+    "outlook": {
+        "desktop": "brave-faolnafnngnfdaknnbpnkhgohbobgegn-Default",
+        "classes": ["chrome-outlook.office.com__mail_-profile_1",
+                    "chrome-outlook.office.com__calendar-profile_1",
+                    "chrome-outlook.office.com__calendar_-profile_1"],
+    },
+}
+BUS_NAME = "local.dotfiles.AppFocus"
+PLUGIN = "dotfiles-app-focus-v1"
+
+# O KWin mantém só IDs e ordem de ativação na RAM; nenhum título ou histórico
+# de navegação é consultado. O Python termina após cada seleção do menu.
+KWIN_SOURCE = r"""
+const apps = APP_RULES;
+const recent = {};
+let serial = 0;
+function remember(w) {
+    if (w) recent[String(w.internalId)] = ++serial;
+}
+// Antes da primeira seleção, usa a ordem visual, priorizando janelas visíveis.
+for (const w of workspace.stackingOrder) if (w.minimized) remember(w);
+for (const w of workspace.stackingOrder) if (!w.minimized) remember(w);
+remember(workspace.activeWindow);
+workspace.windowActivated.connect(remember);
+workspace.windowRemoved.connect(w => { delete recent[String(w.internalId)]; });
+function activate(key) {
+    const matches = workspace.windowList().filter(w =>
+        w.normalWindow && apps[key].classes.includes(String(w.resourceClass).toLowerCase()));
+    matches.sort((a, b) => (recent[String(b.internalId)] || 0) -
+                           (recent[String(a.internalId)] || 0));
+    const w = matches[0];
+    if (w) {
+        if (w.desktops.length && !w.desktops.includes(workspace.currentDesktop))
+            workspace.currentDesktop = w.desktops[0];
+        w.minimized = false;
+        workspace.activeWindow = w;
+    }
+    callDBus("local.dotfiles.AppFocus", "/FocusResult", "local.dotfiles.FocusResult",
+             "Done", JSON.stringify({found: !!w, focused: !!w && workspace.activeWindow === w,
+                                      id: w ? String(w.internalId) : "", count: matches.length}));
+}
+for (const key of Object.keys(apps)) {
+    registerShortcut("dotfiles-focus-" + key, "Focus existing " + key, "", () => activate(key));
+}
+"""
+
+
+def focus_existing(target):
+    import dbus
+    import dbus.service
+    from dbus.mainloop.glib import DBusGMainLoop
+    from gi.repository import GLib
+
+    DBusGMainLoop(set_as_default=True)
+    bus = dbus.SessionBus()
+    name = dbus.service.BusName(BUS_NAME, bus, do_not_queue=True)
+    loop = GLib.MainLoop()
+    result = {}
+
+    class Reply(dbus.service.Object):
+        @dbus.service.method("local.dotfiles.FocusResult", in_signature="s")
+        def Done(self, value):
+            result.update(json.loads(value))
+            loop.quit()
+
+    reply = Reply(name, "/FocusResult")
+    scripting = dbus.Interface(bus.get_object("org.kde.KWin", "/Scripting"),
+                               "org.kde.kwin.Scripting")
+    try:
+        if not scripting.isScriptLoaded(PLUGIN):
+            with tempfile.TemporaryDirectory(prefix="app-focus-") as folder:
+                path = Path(folder) / "focus.js"
+                path.write_text(KWIN_SOURCE.replace("APP_RULES", json.dumps(APPS)))
+                number = scripting.loadScript(str(path), PLUGIN, signature="ss")
+                if number < 0:
+                    raise RuntimeError("KWin could not load the focus script")
+                script = dbus.Interface(bus.get_object("org.kde.KWin", f"/Scripting/Script{number}"),
+                                        "org.kde.kwin.Script")
+                script.run()
+        shortcuts = dbus.Interface(bus.get_object("org.kde.kglobalaccel", "/component/kwin"),
+                                    "org.kde.kglobalaccel.Component")
+        shortcuts.invokeShortcut(f"dotfiles-focus-{target}", signature="s")
+        if not result:
+            def expire():
+                loop.quit()
+                return False
+            GLib.timeout_add_seconds(3, expire)
+            loop.run()
+        if not result:
+            raise RuntimeError("KWin did not confirm the window lookup; no application was launched")
+        if result["found"] and not result["focused"]:
+            raise RuntimeError("Existing window found, but activation failed; no duplicate was opened")
+        return result
+    finally:
+        reply.remove_from_connection()
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("application", choices=APPS)
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args()
+    if "KDE" not in os.environ.get("XDG_CURRENT_DESKTOP", "").upper():
+        print("KDE session unavailable; skipping.")
+        return
+    if args.dry_run:
+        print(f"Focus most recently used {args.application} window; launch {APPS[args.application]['desktop']}.desktop only if absent.")
+        return
+    runtime = os.environ.get("XDG_RUNTIME_DIR")
+    if not runtime:
+        parser.exit(1, "Session runtime directory unavailable; no application was launched.\n")
+    # Cliques simultâneos não devem disputar o callback nem abrir duas janelas.
+    fd = os.open(Path(runtime) / "desktop-app-focus.lock", os.O_CREAT | os.O_RDWR, 0o600)
+    with os.fdopen(fd, "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            result = focus_existing(args.application)
+        except Exception as error:
+            parser.exit(1, f"Window activation failed: {error}\n")
+        if result["found"]:
+            print(json.dumps(result))
+        else:
+            subprocess.run(["gtk-launch", APPS[args.application]["desktop"]], check=True)
+
+
+if __name__ == "__main__":
+    main()

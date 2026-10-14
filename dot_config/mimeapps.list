@@ -34,4 +34,4 @@ x-scheme-handler/web+msteams=brave-teams-work.desktop
 x-scheme-handler/codex=chatgpt.desktop
 x-scheme-handler/https=brave-work-browser.desktop
 text/html=brave-work-browser.desktop
-x-scheme-handler/t3code=t3code-url-handler.desktop
+x-scheme-handler/t3code=t3code.desktop

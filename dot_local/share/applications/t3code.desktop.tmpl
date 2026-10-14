@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=T3 Code (Nightly)
+Comment=Official nightly using existing T3 Code projects and conversations
+Exec={{ .chezmoi.homeDir }}/.local/bin/t3code-nightly %U
+TryExec={{ .chezmoi.homeDir }}/.local/bin/t3code-nightly
+Icon={{ .chezmoi.homeDir }}/.local/opt/t3code-nightly/nightly.png
+Terminal=false
+Categories=Development;
+StartupWMClass=t3code
+MimeType=x-scheme-handler/t3code;

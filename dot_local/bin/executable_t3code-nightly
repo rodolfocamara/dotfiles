@@ -1,0 +1,201 @@
+#!/usr/bin/env python3
+"""Abre a nightly oficial com os dados atuais, após backup e saída da estável."""
+
+import argparse
+import datetime
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import signal
+import sqlite3
+import subprocess
+import tempfile
+import time
+
+VERSION = "0.0.46-nightly.20261014.3093"
+SHA256 = "76efaa8c7e8bafbd7b3e9c06a3fbbf6910680dbb951fd89b73458ac9521b3ebb"
+HOME_DIR = Path.home()
+IMAGE = HOME_DIR / ".local/opt/t3code-nightly" / f"T3-Code-{VERSION}-x86_64.AppImage"
+STATE = HOME_DIR / ".local/state/t3code-nightly"
+STABLE_EXE = Path("/opt/t3code-bin/t3code")
+
+
+def running_apps():
+    """Processos da estável ou de qualquer AppImage do T3, inclusive abertos fora do lançador."""
+    found = set()
+    for p in Path("/proc").iterdir():
+        if not p.name.isdigit():
+            continue
+        try:
+            if p.stat().st_uid != os.getuid():
+                continue
+            exe = (p / "exe").resolve(strict=True)
+        except OSError:
+            continue
+        if exe == STABLE_EXE:
+            found.add("stable")
+        elif exe.name == "t3code" and exe.parent.name.startswith(".mount_T3-Cod"):
+            found.add("nightly")
+    return sorted(found)
+
+
+def stable_running():
+    return "stable" in running_apps()
+
+
+def atomic_json(path, data):
+    with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+        temporary = f.name
+    os.replace(temporary, path)
+
+
+def backup_valid(marker):
+    # O registro vale só para a versão atual: cada nightly pode migrar o banco
+    # de novo, e o backup anterior não tem as conversas feitas depois dele.
+    try:
+        saved = json.loads(marker.read_text())
+    except (OSError, ValueError):
+        return False
+    if saved.get("version") != VERSION:
+        return False
+    databases = saved.get("databases")
+    if not databases:
+        # Registro do formato antigo, sem a lista de bancos: renova o backup
+        # em vez de travar; o anterior continua em disco.
+        return False
+    if not all((Path(saved["backup"]) / "userdata" / d).is_file() for d in databases):
+        raise RuntimeError("Recorded recovery backup is missing; refusing to continue")
+    return True
+
+
+def backup_for_version():
+    root = HOME_DIR / ".local/share/t3code-backups"
+    root.mkdir(mode=0o700, parents=True, exist_ok=True)
+    backup = root / datetime.datetime.now().strftime(f"before-{VERSION}-%Y%m%d-%H%M%S")
+    backup.mkdir(mode=0o700)
+    # Com todo T3 parado, o banco, WAL e arquivos associados formam uma cópia
+    # consistente. Reflinks economizam espaço no Btrfs sem compartilhar escritas.
+    # Backups de versões anteriores ficam onde estão.
+    for src, name in [(HOME_DIR / ".t3/userdata", "userdata"),
+                      (HOME_DIR / ".config/t3code", "electron-stable"),
+                      (HOME_DIR / ".config/t3code-v2", "electron-v2")]:
+        if src.exists():
+            subprocess.run(["cp", "-RP", "--reflink=auto", "--preserve=timestamps",
+                            "--no-preserve=mode", str(src), str(backup / name)], check=True)
+    # Antes da primeira migração só existe state.sqlite; depois, a V2 usa
+    # statev2.sqlite. Todo banco presente precisa passar na verificação.
+    databases = [d for d in ("statev2.sqlite", "state.sqlite") if (backup / "userdata" / d).is_file()]
+    if not databases:
+        raise RuntimeError("No T3 database found to back up")
+    for name in databases:
+        with sqlite3.connect((backup / "userdata" / name).as_uri() + "?mode=ro", uri=True) as connection:
+            if connection.execute("PRAGMA quick_check").fetchone()[0] != "ok":
+                raise RuntimeError(f"Recovery database integrity check failed: {name}")
+    atomic_json(STATE / "migration-backup.json",
+                {"backup": str(backup), "version": VERSION, "databases": databases})
+    print(f"Verified recovery backup: {backup} ({', '.join(databases)})", flush=True)
+
+
+def configure_haptics(executable):
+    runtime = os.environ.get("XDG_RUNTIME_DIR")
+    if not runtime:
+        return
+    directory = Path(runtime)
+    with tempfile.NamedTemporaryFile(mode="w", dir=directory, delete=False) as f:
+        f.write("T3_HAPTICS_EXECUTABLE=" + json.dumps(str(executable)) + "\n")
+        temporary = f.name
+    os.replace(temporary, directory / "t3code-haptics.env")
+    subprocess.run(["systemctl", "--user", "try-restart", "t3-haptics.service"],
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--wait-for-stable", action="store_true")
+    args, app_args = parser.parse_known_args()
+    if args.dry_run:
+        needed = not backup_valid(STATE / "migration-backup.json")
+        print(f"Image: {IMAGE}\nData: {HOME_DIR / '.t3'}\n"
+              f"Backup for this version needed: {needed}; running: {running_apps() or 'none'}")
+        return
+    if not IMAGE.is_file():
+        print("Official nightly AppImage is not installed; skipping.")
+        return
+    os.umask(0o077)
+    STATE.mkdir(mode=0o700, parents=True, exist_ok=True)
+    with (STATE / "launch.lock").open("w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        with IMAGE.open("rb") as image:
+            if hashlib.file_digest(image, "sha256").hexdigest() != SHA256:
+                raise RuntimeError("Official AppImage checksum does not match")
+        # Sem backup desta versão, nenhum T3 pode estar aberto: o flock só
+        # coordena lançadores e não impede o app de escrever durante a cópia.
+        # Com backup válido, só a estável bloqueia; a nightly recebe o link.
+        needs_backup = not backup_valid(STATE / "migration-backup.json")
+        blocking = running_apps if needs_backup else stable_running
+        if blocking() and not args.wait_for_stable:
+            parser.exit(1, "Close every T3 Code window first. Active agents will not be interrupted.\n")
+        if blocking():
+            print("Waiting for T3 Code to close; no active agents will be interrupted.", flush=True)
+        while blocking():
+            time.sleep(3)
+        if needs_backup:
+            backup_for_version()
+        runtime_record = STATE / "running.json"
+        existing = False
+        try:
+            running = json.loads(runtime_record.read_text())
+            process = Path(f"/proc/{running['pid']}")
+            existing = (str((process / "exe").resolve(strict=True)) == running["exe"]
+                        and (process / "stat").read_text().rsplit(")", 1)[1].split()[19] == running["start"])
+        except (OSError, KeyError, ValueError):
+            pass
+        # Uma nightly aberta fora do lançador recebe o link; o processo lançado
+        # aqui é transitório e não pode assumir o filtro do haptics.
+        existing = existing or "nightly" in running_apps()
+        env = os.environ.copy()
+        for name in ("T3CODE_PORT", "T3CODE_BOOTSTRAP_FD", "T3CODE_DEV_AUTH_TOKEN",
+                     "VITE_DEV_SERVER_URL", "ELECTRON_RUN_AS_NODE", "APPIMAGE", "APPDIR"):
+            env.pop(name, None)
+        env.update(T3CODE_HOME=str(HOME_DIR / ".t3"),
+                   XDG_CONFIG_HOME=str(HOME_DIR / ".config"),
+                   XDG_DATA_HOME=str(HOME_DIR / ".local/share"),
+                   XDG_CACHE_HOME=str(HOME_DIR / ".cache"),
+                   T3CODE_DISABLE_AUTO_UPDATE="true")
+        child = subprocess.Popen([str(IMAGE), *app_args], env=env, cwd=HOME_DIR)
+        signal.signal(signal.SIGTERM, lambda *_: child.terminate())
+        signal.signal(signal.SIGINT, lambda *_: child.terminate())
+        # O AppImage monta em um caminho temporário. Registra a identidade real
+        # para o filtro de notificações, sem confiar no nome enviado pelo app.
+        bound = False
+        for _ in range(100):
+            if child.poll() is not None:
+                break
+            try:
+                executable = Path(f"/proc/{child.pid}/exe").resolve(strict=True)
+                if (not existing and executable.name == "t3code"
+                        and executable.parent.name.startswith(".mount_")):
+                    start = Path(f"/proc/{child.pid}/stat").read_text().rsplit(")", 1)[1].split()[19]
+                    atomic_json(runtime_record, {"pid": child.pid, "exe": str(executable), "start": start})
+                    configure_haptics(executable)
+                    bound = True
+                    break
+                if existing:
+                    break
+            except OSError:
+                pass
+            time.sleep(0.1)
+        fcntl.flock(lock, fcntl.LOCK_UN)
+        code = child.wait()
+        if bound:
+            configure_haptics(STABLE_EXE)
+        raise SystemExit(code)
+
+
+if __name__ == "__main__":
+    main()

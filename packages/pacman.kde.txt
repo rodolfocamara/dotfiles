@@ -1,0 +1,5 @@
+# Controle do feedback háptico do MX Master 4; inclui a biblioteca HID++.
+solaar
+# Monitor de notificações de conclusão do T3 via D-Bus/GLib.
+python-dbus
+python-gobject

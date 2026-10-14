@@ -1,0 +1,19 @@
+[Unit]
+Description=MX Master 4 haptic feedback for T3 Code completion notifications
+PartOf=graphical-session.target
+After=graphical-session.target
+ConditionPathExists=/opt/t3code-bin/t3code
+ConditionPathExists=%h/.local/bin/mx4-haptics
+
+[Service]
+Type=simple
+Environment=T3_HAPTICS_EXECUTABLE=/opt/t3code-bin/t3code
+EnvironmentFile=-%t/t3code-haptics.env
+ExecStart=%h/.local/bin/t3-haptics --t3-executable ${T3_HAPTICS_EXECUTABLE}
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+UMask=0077
+
+[Install]
+WantedBy=graphical-session.target

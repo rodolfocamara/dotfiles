@@ -1,0 +1,16 @@
+[Unit]
+Description=Subtle MX Master 4 haptic feedback for the Handy button
+PartOf=graphical-session.target
+After=graphical-session.target
+ConditionPathExists=/usr/bin/solaar
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/mx4-haptics
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+UMask=0077
+
+[Install]
+WantedBy=graphical-session.target
