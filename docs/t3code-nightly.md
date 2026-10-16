@@ -1,7 +1,7 @@
 # T3 Code nightly
 
 O lançador `t3code-nightly` usa o AppImage oficial
-`0.0.46-nightly.20261014.3093`, verificado pelo SHA-256 publicado no GitHub.
+`0.1.1-nightly.20261016.3190`, verificado pelo SHA-256 publicado no GitHub.
 O arquivo fica em `~/.local/opt/t3code-nightly/`. A versão está fixada e o
 atualizador automático fica desativado neste lançamento controlado.
 

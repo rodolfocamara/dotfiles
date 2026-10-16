@@ -14,8 +14,8 @@ import subprocess
 import tempfile
 import time
 
-VERSION = "0.0.46-nightly.20261014.3093"
-SHA256 = "76efaa8c7e8bafbd7b3e9c06a3fbbf6910680dbb951fd89b73458ac9521b3ebb"
+VERSION = "0.1.1-nightly.20261016.3190"
+SHA256 = "7d8d7d6b06f1d139b687ebc5a5e8671add0f78a1dc525f011f7ae7b5922669f8"
 HOME_DIR = Path.home()
 IMAGE = HOME_DIR / ".local/opt/t3code-nightly" / f"T3-Code-{VERSION}-x86_64.AppImage"
 STATE = HOME_DIR / ".local/state/t3code-nightly"
