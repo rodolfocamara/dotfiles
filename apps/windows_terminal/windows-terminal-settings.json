@@ -99,7 +99,7 @@
     ],
     "copyFormatting": "none",
     "copyOnSelect": false,
-    "defaultProfile": "{d0fa5d58-e7dd-5fba-b4a0-47e709896e13}",
+    "defaultProfile": "{71166cf1-4269-4fa9-b1c2-72cc8c13161d}",
     "windowingBehavior": "useExisting",
     "keybindings": 
     [
@@ -224,11 +224,11 @@
         "list": 
         [
             {
-                "guid": "{d0fa5d58-e7dd-5fba-b4a0-47e709896e13}",
+                "guid": "{71166cf1-4269-4fa9-b1c2-72cc8c13161d}",
                 "hidden": false,
-                "name": "WSL",
-                "source": "Windows.Terminal.WSL",
-                "startingDirectory": "\\\\wsl.localhost\\Ubuntu\\home\\rcamara\\Repos"
+                "name": "Arch Linux",
+                "commandline": "wsl.exe -d archlinux -u rcamara --cd /home/rcamara",
+                "startingDirectory": "\\\\wsl.localhost\\archlinux\\home\\rcamara"
             },
             {
                 "commandline": "C:\\Program Files\\Git\\bin\\bash.exe",

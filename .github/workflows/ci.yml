@@ -29,12 +29,15 @@ jobs:
         run: |
           mapfile -t files < <(git ls-files '*.sh' | grep -v '\.tmpl$')
           printf 'Verificando %d scripts\n' "${#files[@]}"
-          shellcheck -f gcc "${files[@]}"
+          shellcheck -f gcc "${files[@]}" dot_local/bin/executable_disk-maintenance
 
       # `bash -n` pega erro de sintaxe que o shellcheck deixa passar em arquivo
       # que ele decide não analisar (shebang exótico, por exemplo).
       - name: bash -n
         run: git ls-files '*.sh' | grep -v '\.tmpl$' | xargs -r -n1 bash -n
+
+      - name: Disk maintenance safety tests
+        run: python3 scripts/test-disk-maintenance.py
 
   chezmoi:
     name: chezmoi

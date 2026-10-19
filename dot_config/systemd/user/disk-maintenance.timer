@@ -1,11 +1,9 @@
 [Unit]
-Description=Weekly disk maintenance
+Description=Hourly image and cache maintenance
 
 [Timer]
-# Segunda de manhã: a máquina já está ligada e o usuário ainda não está em
-# reunião. Persistent cobre a máquina desligada na hora marcada.
-OnCalendar=Mon 09:17
-RandomizedDelaySec=15min
+OnCalendar=hourly
+RandomizedDelaySec=5min
 Persistent=true
 
 [Install]
