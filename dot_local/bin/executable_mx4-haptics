@@ -1,0 +1,120 @@
+#!/usr/bin/python3
+"""Pulso discreto no botão do MX Master 4 usado para F13, via Bluetooth."""
+
+import argparse
+import logging
+import os
+from pathlib import Path
+import select
+import time
+
+from logitech_receiver import base, device
+from logitech_receiver.hidpp20_constants import HapticWaveForms, SupportedFeature
+
+LOG = logging.getLogger("mx4-haptics")
+# Layout validado no report_descriptor do MX Master 4 Bluetooth: report 2,
+# sete botões nos primeiros bits. O sexto vira BTN_FORWARD (277) no Linux.
+BUTTON_LAYOUT = bytes.fromhex("85 02 09 01 a1 00 95 07 75 01")
+BUTTON_MASK = 1 << 5
+
+
+def find_mouse():
+    for entry in Path("/sys/class/hidraw").glob("hidraw*"):
+        try:
+            info = dict(line.split("=", 1) for line in (entry / "device/uevent").read_text().splitlines())
+            if info.get("HID_ID") != "0005:0000046D:0000B042":
+                continue
+            if BUTTON_LAYOUT not in (entry / "device/report_descriptor").read_bytes():
+                LOG.warning("Layout HID desconhecido; nenhum botão será observado")
+                continue
+            return "/dev/" + entry.name
+        except (OSError, ValueError):
+            continue
+    return None
+
+
+def open_mouse(path):
+    for info in base.receivers_and_devices():
+        if info.path == path:
+            mouse = device.create_device(base, info)
+            if mouse is not None and mouse.ping():
+                return mouse
+            if mouse is not None:
+                mouse.close()
+    raise OSError("MX Master 4 indisponível")
+
+
+def play(mouse, waveform):
+    if mouse.feature_request(SupportedFeature.HAPTIC, 0x40, int(waveform)) is None:
+        raise OSError("Mouse não confirmou o pulso háptico")
+
+
+def watch(path, level, waveform, test=False):
+    mouse = open_mouse(path)
+    try:
+        if mouse.feature_request(SupportedFeature.HAPTIC, 0x20, 1, level) is None:
+            raise OSError("Mouse não confirmou a intensidade háptica")
+        if test:
+            play(mouse, waveform)
+            LOG.info("Pulso de teste enviado e confirmado pelo mouse")
+            return
+        # hidraw observa sem capturar o dispositivo: input-remapper continua
+        # sendo o único responsável por gerar F13, inclusive press/release.
+        fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
+        try:
+            LOG.info("Ativo: Bluetooth, botão lateral → pulso a %s%%", level)
+            pressed = False
+            last_pulse = 0.0
+            while True:
+                if not select.select([fd], [], [], 5)[0]:
+                    continue
+                report = os.read(fd, 64)
+                if not report:
+                    raise OSError("Mouse desconectado")
+                if len(report) < 2 or report[0] != 2:
+                    continue
+                down = bool(report[1] & BUTTON_MASK)
+                now = time.monotonic()
+                if down and not pressed and now - last_pulse >= 0.3:
+                    play(mouse, waveform)
+                    last_pulse = now
+                    LOG.info("Pulso do botão F13 enviado")
+                pressed = down
+        finally:
+            os.close(fd)
+    finally:
+        mouse.close()
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--dry-run", action="store_true", help="Detecta o mouse sem alterar configurações")
+    parser.add_argument("--test", action="store_true", help="Emite somente um pulso e termina")
+    parser.add_argument("--level", type=int, choices=range(1, 101), default=100, metavar="1..100")
+    parser.add_argument("--waveform", choices=[str(w) for w in HapticWaveForms], default="SUBTLE COLLISION")
+    args = parser.parse_args()
+    logging.basicConfig(level=logging.WARNING, format="%(name)s: %(message)s")
+    LOG.setLevel(logging.INFO)
+    waveform = next(w for w in HapticWaveForms if str(w) == args.waveform)
+    if args.dry_run:
+        print(f"Mouse Bluetooth: {find_mouse() or 'ausente; serviço aguardará conexão'}")
+        print(f"BTN_FORWARD (277) → {waveform}, intensidade {args.level}%; F13 continua no input-remapper")
+        return
+    while True:
+        path = find_mouse()
+        if path:
+            try:
+                watch(path, args.level, waveform, args.test)
+                if args.test:
+                    return
+            except (OSError, RuntimeError) as error:
+                if args.test:
+                    raise SystemExit(str(error)) from error
+                LOG.warning("Reconectando: %s", error)
+        elif args.test:
+            raise SystemExit("MX Master 4 Bluetooth não encontrado")
+        time.sleep(3)
+
+
+if __name__ == "__main__":
+    main()

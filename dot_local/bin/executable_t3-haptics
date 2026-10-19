@@ -1,0 +1,102 @@
+#!/usr/bin/python3
+"""Pulso no MX Master 4 para novas notificações de conclusão do T3 Code."""
+
+import argparse
+import logging
+from pathlib import Path
+import subprocess
+import time
+
+import dbus
+from dbus.mainloop.glib import DBusGMainLoop
+from gi.repository import GLib
+
+LOG = logging.getLogger("t3-haptics")
+MATCH = ("type='method_call',interface='org.freedesktop.Notifications',"
+         "member='Notify',path='/org/freedesktop/Notifications',arg3='Thread completed'")
+
+
+class CompletionListener:
+    def __init__(self, bus, executable, pulse, clock=time.monotonic):
+        self.bus = bus
+        self.executable = executable.resolve()
+        self.pulse = pulse
+        self.clock = clock
+        self.last_pulse = float("-inf")
+
+    def receive(self, _connection, message):
+        if (message.get_type() != dbus.lowlevel.MESSAGE_TYPE_METHOD_CALL
+                or message.get_interface() != "org.freedesktop.Notifications"
+                or message.get_member() != "Notify"
+                or message.get_path() != "/org/freedesktop/Notifications"):
+            return
+        args = message.get_args_list()
+        if len(args) != 8 or str(args[3]) != "Thread completed":
+            return
+        try:
+            # Nome/título da notificação não provam sua origem. Consulte o
+            # processo remetente sem ler ou registrar o corpo da notificação.
+            pid = self.bus.call_blocking(
+                "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",
+                "GetConnectionUnixProcessID", "s", (message.get_sender(),), timeout=2,
+            )
+            if Path(f"/proc/{pid}/exe").resolve(strict=True) != self.executable:
+                return
+        except (dbus.DBusException, OSError):
+            return
+        now = self.clock()
+        if now - self.last_pulse < 5:
+            return
+        self.last_pulse = now
+        self.pulse()
+
+
+def emit_pulse():
+    helper = Path.home() / ".local/bin/mx4-haptics"
+    try:
+        result = subprocess.run(
+            [str(helper), "--test", "--level", "100", "--waveform", "SUBTLE COLLISION"],
+            timeout=8, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False,
+        )
+        if result.returncode == 0:
+            LOG.info("Pulso de conclusão enviado")
+        else:
+            LOG.info("Pulso ignorado: mouse indisponível ou sem confirmação")
+    except (OSError, subprocess.TimeoutExpired):
+        LOG.warning("Pulso ignorado: helper indisponível ou tempo esgotado")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--dry-run", action="store_true", help="Mostra a configuração sem monitorar ou vibrar")
+    parser.add_argument("--t3-executable", type=Path, default=Path("/opt/t3code-bin/t3code"))
+    args = parser.parse_args()
+    logging.basicConfig(level=logging.INFO, format="%(name)s: %(message)s")
+    if args.dry_run:
+        print(f"Origem: {args.t3_executable}; evento: Thread completed")
+        print("Pulso a 100%; intervalo mínimo de 5 s; sem eventos antigos ou vínculo com F13")
+        return
+    if not args.t3_executable.is_file():
+        LOG.info("T3 Code ausente; integração não iniciada")
+        return
+    DBusGMainLoop(set_as_default=True)
+    lookup = dbus.SessionBus(private=True)
+    monitor = dbus.SessionBus(private=True)
+    listener = CompletionListener(lookup, args.t3_executable, emit_pulse)
+    monitor.add_message_filter(listener.receive)
+    # Uma conexão em modo monitor não pode enviar chamadas; a consulta de
+    # origem usa outra conexão. O filtro no barramento evita outras mensagens.
+    monitor.call_blocking(
+        "org.freedesktop.DBus", "/org/freedesktop/DBus",
+        "org.freedesktop.DBus.Monitoring", "BecomeMonitor", "asu", ([MATCH], dbus.UInt32(0)),
+    )
+    LOG.info("Ativo: conclusões do T3 em notificações do desktop; F13 sem vibração")
+    try:
+        GLib.MainLoop().run()
+    finally:
+        monitor.close()
+        lookup.close()
+
+
+if __name__ == "__main__":
+    main()

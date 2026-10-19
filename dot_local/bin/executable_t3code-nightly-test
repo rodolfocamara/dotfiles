@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+appimage="$HOME/.local/opt/t3code-nightly/T3-Code-0.0.46-nightly.20261013.3066-x86_64.AppImage"
+state_dir="$HOME/.local/share/t3code-nightly-test"
+
+if [[ "${1:-}" == --dry-run ]]; then
+    printf 'AppImage: %s\nIsolated state: %s\n' "$appimage" "$state_dir"
+    exit 0
+fi
+if [[ ! -x "$appimage" ]]; then
+    printf 'Nightly test AppImage is not installed: %s\n' "$appimage" >&2
+    exit 0
+fi
+
+umask 077
+mkdir -p "$state_dir"/{home,config,data,cache}
+# O servidor e o Electron precisam de isolamento independente. O HOME real
+# permanece intacto para os binários e logins dos provedores já instalados.
+export T3CODE_HOME="$state_dir/home"
+export XDG_CONFIG_HOME="$state_dir/config"
+export XDG_DATA_HOME="$state_dir/data"
+export XDG_CACHE_HOME="$state_dir/cache"
+export T3CODE_DESKTOP_APP_USER_MODEL_ID=com.t3tools.t3code.nightlytest
+# Fixa o artefato verificado durante o teste; não atualiza silenciosamente.
+export T3CODE_DISABLE_AUTO_UPDATE=true
+unset T3CODE_PORT T3CODE_BOOTSTRAP_FD T3CODE_DEV_AUTH_TOKEN VITE_DEV_SERVER_URL
+unset ELECTRON_RUN_AS_NODE APPIMAGE APPDIR
+exec "$appimage" --class=t3code-nightly-test "$@"
