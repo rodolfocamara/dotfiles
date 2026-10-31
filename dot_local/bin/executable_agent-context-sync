@@ -210,15 +210,3 @@ for root in "${all_roots[@]}"; do
     fi
   done
 done
-
-if command -v codex >/dev/null 2>&1; then
-  if codex features list 2>/dev/null | awk '$1 == "memories" && $NF == "true" { found=1 } END { exit !found }'; then
-    printf 'Memórias locais do Codex já estão habilitadas\n'
-  elif [[ "$dry_run" == '1' ]]; then
-    printf 'DRY-RUN: codex features enable memories\n'
-  else
-    codex features enable memories
-  fi
-else
-  printf 'Codex não encontrado; habilitação de memórias ignorada\n'
-fi
