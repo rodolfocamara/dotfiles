@@ -22,11 +22,18 @@ Gemini/Antigravity, por symlink.
 Skills: cada subpasta de ~/.local/share/agent-context/skills/<grupo>/ que tenha
 SKILL.md ganha um symlink próprio nos destinos do grupo:
 
-  comum     ~/.agents/skills e os perfis personal, work e glm do Claude Code
-  trabalho  ~/.agents/skills e os perfis personal e work do Claude Code
+  comum     ~/.agents/skills, ~/.gemini/config/skills e os perfis personal,
+            work e glm do Claude Code
+  trabalho  ~/.agents/skills, ~/.gemini/config/skills e os perfis personal e
+            work do Claude Code
 
-~/.agents/skills é lido por Codex, Cursor, Gemini e OpenCode. O Claude Code
-não lê esse caminho, por isso recebe os links no próprio perfil.
+~/.agents/skills é lido por Codex, Cursor e OpenCode. O Claude Code não lê esse
+caminho, por isso recebe os links no próprio perfil. O Antigravity só lê
+.agents/skills dentro do workspace; as skills globais dele ficam em
+~/.gemini/config/skills, que só entra se ~/.gemini existir.
+
+Uma skill da fonte pode ser symlink para um clone externo (ex.: um repo de
+skills atualizado com git pull); o destino aponta para a fonte e segue o link.
 
 Links que apontam para a fonte mas cuja skill não existe mais são removidos.
 Arquivos divergentes nunca são sobrescritos: a sincronização para e pede
@@ -125,6 +132,11 @@ declare -A group_targets=(
   [comum]="$HOME/.agents/skills $HOME/.claude-personal/skills $HOME/.claude-work/skills $HOME/.claude-glm/skills"
   [trabalho]="$HOME/.agents/skills $HOME/.claude-personal/skills $HOME/.claude-work/skills"
 )
+if [[ -d "$HOME/.gemini" ]]; then
+  for group in "${!group_targets[@]}"; do
+    group_targets[$group]+=" $HOME/.gemini/config/skills"
+  done
+fi
 
 all_roots=()
 for group in "${!group_targets[@]}"; do
@@ -157,7 +169,9 @@ for group in "${!group_targets[@]}"; do
       target_skill="$root/$skill_name"
       current="$(readlink -f "$target_skill" 2>/dev/null || true)"
 
-      if [[ -L "$target_skill" && "$current" == "$source_skill" ]]; then
+      # Compara caminhos resolvidos: uma skill da fonte que é symlink para um
+      # clone externo seria recriada a cada execução se comparada literalmente.
+      if [[ -L "$target_skill" && "$current" == "$(readlink -f "$source_skill")" ]]; then
         continue
       fi
 
@@ -196,15 +210,3 @@ for root in "${all_roots[@]}"; do
     fi
   done
 done
-
-if command -v codex >/dev/null 2>&1; then
-  if codex features list 2>/dev/null | awk '$1 == "memories" && $NF == "true" { found=1 } END { exit !found }'; then
-    printf 'Memórias locais do Codex já estão habilitadas\n'
-  elif [[ "$dry_run" == '1' ]]; then
-    printf 'DRY-RUN: codex features enable memories\n'
-  else
-    codex features enable memories
-  fi
-else
-  printf 'Codex não encontrado; habilitação de memórias ignorada\n'
-fi
